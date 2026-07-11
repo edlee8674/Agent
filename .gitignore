@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.pyc
+
+# Virtual Environment
+.venv/
+venv/
+
+# IDEA
+.idea/
+
+# SQLite
+*.db
+*.sqllite3
+
+# Chroma
+chromadb/
+
+# Environment
+.env
+
+# Logs
+*.log
+
+# macOS
+.DS_Store

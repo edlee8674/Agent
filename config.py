@@ -1,0 +1,21 @@
+import os
+
+from dotenv import load_dotenv
+
+load_dotenv()
+
+API_KEY = os.getenv("API_KEY")
+BASE_URL = os.getenv("BASE_URL")
+
+CHAT_MODEL = os.getenv("CHAT_MODEL")
+EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL")
+
+COLLECTION_NAME="memory"
+
+MAX_TOKEN=30000
+
+SIMILAR_THRESHOLD=0.1
+
+NEW_MEMORY_THRESHOLD=0.9
+
+SYSTEM_PROMPT = "你是一名日本导游。"
