@@ -1,36 +1,20 @@
-from embedding import create_embedding
-from memory.retriever import search_memory_by_embedding
+from memory.action import MemoryAction
+from llm import create_embedding
+from memory.models import Memory
+from memory.validator import ValidatorResult
 from memory.vector_store import add_memory, update_memory
 
-
-def save(memory):
+def write(memory: Memory, result: ValidatorResult):
     embedding = create_embedding(memory.fact)
     metadata = memory.to_metadata()
-    memories = search_memory_by_embedding(embedding)
 
-    if not memories:
-        add_memory(
-            id = memory.id,
-            text= memory.fact,
-            embedding= embedding,
-            metadata= metadata
-        )
-        return
-    top = memories[0]
-
-    if top.distance < 0.1:
-        update_memory(
-            id=top.id,
-            text=memory.fact,
-            embedding=embedding,
-            metadata=metadata
-        )
-
-        return
-
-    add_memory(
-        id=memory.id,
-        text=memory.fact,
-        embedding=embedding,
-        metadata=metadata
-    )
+    if result.action == MemoryAction.ADD:
+        add_memory(memory.id, memory.fact, embedding, metadata)
+    elif result.action == MemoryAction.UPDATE:
+        if result.target_id is None:
+            raise ValueError("UPDATE action requires target_id")
+        update_memory(result.target_id, memory.fact, embedding, metadata)
+    elif result.action == MemoryAction.IGNORE:
+        pass
+    elif result.action == MemoryAction.MERGE:
+        pass

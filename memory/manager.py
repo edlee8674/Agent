@@ -1,10 +1,15 @@
 from memory.models import Memory
 from memory.retriever import search_memory, format_vector_memory
-from memory.writer import save
+from memory.validator import MemoryValidator
+from memory.writer import write
 
 
 def save_memory(memory: Memory):
-    save(memory)
+    memories = search_memory(memory.fact)
+
+    result = MemoryValidator().validate(memory, memories)
+
+    write(memory,result)
 
 def get_vector_memory(user_input):
     return search_memory(user_input)

@@ -39,7 +39,10 @@ def update_memory(id, text, embedding,metadata):
     print("update-collections:", collections)
 
 
-def delete_memory(id,embedding):
+def delete_memory(id):
     collections.delete(
         ids=[id]
     )
+
+def merge_memory(id):
+    pass

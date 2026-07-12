@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from datetime import date
-from typing import List, Optional
+from typing import Optional
 from uuid import uuid4
 
 
@@ -10,7 +10,7 @@ class Memory:
     fact: str
     category: str
     importance: float
-    ttl : Optional[int]
+    ttl: Optional[str]
     created_time: str
     distance: Optional[float] = None
 
@@ -26,7 +26,7 @@ class Memory:
         return metedata
 
     @classmethod
-    def create(cls, fact: str, category: str, importance: float, ttl: Optional[int] = None):
+    def create(cls, fact: str, category: str, importance: float, ttl: Optional[str] = None):
         return cls(id = str(uuid4()),
                    fact=fact,
                    category=category,
@@ -40,7 +40,7 @@ class Memory:
                    fact=document,
                    category=metadata["category"],
                    importance=metadata["importance"],
-                   ttl=metadata["ttl"],
+                   ttl=metadata.get("ttl"),
                    created_time=metadata["created_time"],
                    distance=distance
                    )
@@ -51,4 +51,4 @@ class Memory:
     def is_expired(self):
         if self.ttl is None:
             return False
-        return date.today() > date.fromisoformat(days=self.ttl)
+        return date.today() > date.fromisoformat(self.ttl)

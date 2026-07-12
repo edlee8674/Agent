@@ -19,7 +19,6 @@ class EmbeddingCache:
         """)
 
         self.conn.commit()
-
     def get(self, text: str):
 
         cursor = self.conn.cursor()
@@ -58,6 +57,3 @@ class EmbeddingCache:
 
         self.conn.commit()
 
-    def __str__(self):
-        return (f"[{self.category}]"
-                f"{self.fact}")

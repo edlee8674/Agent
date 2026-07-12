@@ -1,9 +1,8 @@
 import json
-import uuid
-from datetime import datetime
 from memory.models import Memory
+from llm import chat
 
-def extract_memory(client, user_input,assistant_content):
+def extract_memory(user_input,assistant_content):
 
     prompt = f"""
 你是一个 Memory Extractor。
@@ -64,16 +63,13 @@ AI回答：
 {assistant_content}
 
 """
-
-    response = client.chat.completions.create(
-        model="qwen-turbo",
-        messages=[
-            {
-                "role":"user",
-                "content":prompt
-            }
-        ]
-    )
+    messages = [
+        {
+            "role": "user",
+            "content": prompt
+        }
+    ]
+    response = chat(messages)
     content = response.choices[0].message.content
 
     data = json.loads(content)

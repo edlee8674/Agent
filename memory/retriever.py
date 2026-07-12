@@ -1,6 +1,5 @@
-from importlib.metadata import metadata
 
-from embedding import create_embedding
+from llm import create_embedding
 from memory.models import Memory
 from memory.vector_store import query_memory
 
@@ -20,7 +19,13 @@ def to_memory_list(collection):
     memories = []
     for i in range(len(collection["ids"][0])):
         metadata = collection["metadatas"][0][i]
-        memory = Memory.from_chroma(collection["ids"][0][i], collection["documents"][0][i], metadata, metadata.distance)
+        distance = collection["distances"][0][i]
+        memory = Memory.from_chroma(
+            collection["ids"][0][i],
+            collection["documents"][0][i],
+            metadata,
+            distance,
+        )
         memories.append(memory)
     return memories
 
@@ -32,16 +37,10 @@ def format_vector_memory(memories):
         if memory.is_expired():
             continue
         result.append(memory.fact)
-    return "\n".join(result)
+    return "\n".join(result) or "无"
 
 def format_short_memory(messages):
-
-    result=[]
-
-    for m in messages:
-        result += f"""
-        {m['role']}:
-        {m['content']}
-        """
-
-    return result
+    return "\n".join(
+        f"{message['role']}:\n{message['content']}"
+        for message in messages
+    )
