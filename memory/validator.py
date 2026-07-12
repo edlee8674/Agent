@@ -41,13 +41,13 @@ class MemoryValidator:
             如果 IGNORE，
             target_id 返回 null  
                  
-            输出 JSON：         
-            {
-                "action":"UPDATE",        
+            输出JSON格式,例：         
+            {{
+                "action":"",        
                 "target_id":"",           
-                "reason":"..."
-            }     
-                    """
+                "reason":""
+            }}     
+            """
 
         messages = [
             {
