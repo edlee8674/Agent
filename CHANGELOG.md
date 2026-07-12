@@ -8,7 +8,7 @@ All notable changes to this project will be documented here.
 
 Initial project.
 
-Features
+### Features
 
 - OpenAI Chat Completion
 - Streaming Output
@@ -20,7 +20,7 @@ Features
 
 Conversation Memory
 
-Added
+### Added
 
 - Short Memory
 - Token Counter
@@ -32,7 +32,7 @@ Added
 
 Summary Memory
 
-Added
+### Added
 
 - Conversation Summary
 - Token Compression
@@ -44,7 +44,7 @@ Added
 
 Vector Memory
 
-Added
+### Added
 
 - Embedding
 - Cosine Similarity
@@ -57,37 +57,39 @@ Added
 
 Memory Extraction
 
-Added
+### Added
 
 - Memory Extractor
 - Importance Score
-- Category
+- Memory Category
 - TTL
 
 ---
 
 ## v0.6.0
 
-Memory Writer
+Memory Storage
 
-Added
+### Added
 
+- Memory Writer
 - Save Memory
 - Update Memory
-- Deduplication
+- Memory Deduplication
 
 ---
 
 ## v0.7.0
 
-Retriever Refactoring
+Memory Architecture Refactoring
 
-Refactored
+### Refactored
 
-- Memory Dataclass
-- Retriever Layer
-- Vector Store Layer
-- Manager Layer
+- Introduced `Memory` dataclass
+- Split Retriever layer
+- Split Vector Store layer
+- Simplified Manager layer
+- Separated business logic from storage
 
 ---
 
@@ -95,24 +97,78 @@ Refactored
 
 Embedding Cache
 
-Added
+### Added
 
-- SQLite Cache
-- Persistent Embedding Cache
+- SQLite Embedding Cache
+- Persistent Embedding Storage
 
-Improved
+### Improved
 
-- Reduced API Calls
+- Reduced Embedding API Calls
 - Faster Startup
+- Automatic Cache Lookup
+
+---
+
+## v0.9.0
+
+Memory Validation Pipeline
+
+### Added
+
+- MemoryAction
+- ValidationResult
+- MemoryValidator
+- MemoryMerger
+
+### Refactored
+
+- Introduced LLM-based memory validation
+- Manager becomes Pipeline Orchestrator
+- Writer focuses on database operations only
+- Merger is responsible for memory consolidation
+- Unified Chat & Embedding APIs in `llm.py`
+
+### Pipeline
+
+```
+Extractor
+    ↓
+Retriever
+    ↓
+Validator
+    ↓
+ValidationResult
+    ↓
+Merger (optional)
+    ↓
+Writer
+```
 
 ---
 
 ## Next Version
 
-Planned
+Memory Reflection
 
-- Memory Validator
+### Planned
+
+- Memory Reflection
+- ReflectionResult
+- Memory Compression
+- Memory Consolidation
+- Importance Evolution
+- Automatic Memory Cleanup
+
+---
+
+## Future Roadmap
+
 - Prompt Builder
-- Memory Cleaner
 - TTL Scheduler
+- Memory Cleaner
 - Reranker
+- Hybrid Search
+- Agent Workflow
+- Tool Calling
+- Multi-Agent

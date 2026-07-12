@@ -1,58 +1,61 @@
-# AI Agent 开发日志
+# AI Agent Development Log
 
-> 记录每一次重要的设计、重构、踩坑和学习心得。
+> 记录项目演进过程中的设计思考、架构调整、踩坑记录和经验总结。
 >
-> 不记录「做了什么」，重点记录「为什么这么设计」。
+> 不记录功能列表（那是 CHANGELOG 的职责），
+> 重点记录每一次迭代为什么这样设计。
 
 ---
 
-# 2026-07-11
+# Sprint 01
 
-## 本次目标
+Date
 
-完成 Memory 模块第一次重构。
+2026-07-11
 
----
+Theme
 
-## 完成内容
-
-- 引入 ChromaDB 作为长期记忆存储
-- Memory 改为 dataclass
-- 新增 Retriever
-- 新增 Writer
-- Manager 不再直接操作 Chroma
+Memory Architecture Refactoring
 
 ---
 
-## 为什么要重构
+## Background
 
-最开始整个 Memory 模块只有几个函数：
+随着 Summary Memory、Vector Memory、Metadata 等功能增加，
+Manager 已经承担了越来越多职责。
+
+原来的实现：
 
 ```
-search_memory()
+Manager
 
-save_memory()
-
-build_context()
+├── Search
+├── Save
+├── Build Context
+├── Update
+└── ChromaDB
 ```
 
-所有逻辑都写在一起。
+业务逻辑和数据库操作完全耦合。
 
-随着功能增加：
+后续继续增加 TTL、Reflection、Validator 时，
+代码会越来越难维护。
 
-- Summary Memory
-- Vector Memory
-- TTL
-- Metadata
-- Deduplication
-
-Manager 已经越来越臃肿。
-
-因此决定拆层。
+因此决定开始第一次架构重构。
 
 ---
 
-## 新架构
+## Decisions
+
+本次决定：
+
+- Memory 使用 dataclass
+- 拆分 Retriever
+- 拆分 Writer
+- Manager 只负责协调流程
+- Vector Store 只负责数据库
+
+形成新的结构：
 
 ```
 Manager
@@ -70,90 +73,65 @@ Writer
 Vector Store
 ```
 
-职责：
-
-Manager
-
-负责协调流程。
-
-Retriever
-
-负责查询。
-
-Writer
-
-负责写入。
-
-Vector Store
-
-负责数据库。
-
-这样以后新增数据库（Milvus、PGVector）时，
-只需要修改 Vector Store。
-
 ---
 
-## 遇到的问题
+## Problems
 
-### 1）循环引用
+### Circular Import
+
+最初：
 
 ```
 embedding.py
 
 ↓
 
-vector_memory.py
+vector_store.py
 
 ↓
 
 embedding.py
 ```
 
-导致：
+导致 ImportError。
 
-ImportError
+最终：
 
-解决：
-
-Embedding 不再引用 Memory。
-
-Memory 负责调用 Embedding。
+Embedding 不再依赖 Memory。
 
 ---
 
-### 2）Embedding 重复计算
+### Embedding 重复计算
 
 发现：
 
-一次用户输入可能计算三四次 Embedding。
+一次用户请求会重复计算 Embedding。
+
+例如：
+
+```
+Retriever
+
+↓
+
+Writer
+
+↓
+
+Validator
+```
+
+每个模块都会重新调用 Embedding API。
 
 解决：
 
-新增 SQLite Cache。
+增加 SQLite Embedding Cache。
 
-以后：
-
-```
-文本
-
-↓
-
-SQLite
-
-↓
-
-没有
-
-↓
-
-Embedding API
-```
-
-以后可以升级 Redis。
+后续可以替换为 Redis。
 
 ---
 
-### 3）Metadata 为 None
+### Metadata 兼容问题
 
 历史数据没有 metadata。
 
@@ -163,39 +141,129 @@ Retriever 转 Memory 时：
 metadata["category"]
 ```
 
-直接报错。
+直接抛异常。
 
-解决：
+最终：
 
-增加默认值。
+统一采用：
 
-以后旧数据也能兼容。
+```
+metadata.get(...)
+```
+
+保证兼容旧版本数据。
 
 ---
 
-## 学到的内容
+## Reflection
 
-开始理解了：
+开始真正理解：
 
-为什么大型项目都会拆很多层。
+"拆层" 不是为了代码好看。
 
-以前觉得：
+而是为了：
 
-```
-直接写一起最快。
-```
+业务逻辑可以不断增长，
+而不会影响底层存储。
 
-现在发现：
-
-维护成本会越来越高。
+这是第一次真正按照软件架构思路，而不是脚本思路写代码。
 
 ---
 
-## 下一步计划
+## Next Sprint
 
-继续重构：
-
-- Prompt Builder
 - Memory Validator
-- Memory Cleaner
-- TTL Scheduler
+- ValidationResult
+- MemoryAction
+
+
+# Sprint 01
+Date
+
+2026-07-12
+
+Theme
+
+- Memory Validator
+- ValidationResult
+- MemoryAction
+
+---
+
+## Background
+
+一个成熟的Agent 在管理记忆上，不是简单的提取记忆->报错记忆, 
+所以加入Memory Validator判断要保存的新记忆是否合法、是否重复、是否冲突、格式是否正确
+
+---
+
+## Decisions
+新Memory生命周期将改造成：
+```
+Conversation
+
+↓
+
+Extractor
+
+↓
+
+Memory
+
+↓
+
+Validator
+
+↓
+
+Writer
+
+↓
+
+VectorDB
+```
+
+---
+
+## Problems
+
+### Memory Action
+定义Memory Action枚举类时，加入了@dataclass，
+因为枚举类代表几个固定值，而@dataclass是给数据对象用的，以Memory类为例,在创建对象时，python会自动帮我生成
+```
+def __init__(self, id, fact, importance):
+        self.id = id
+        self.fact = fact
+        self.importance = importance
+
+def __repr__(self):
+
+def __eq__(self):
+```
+
+Enum是自己控制对象生成，永远是那几个固定值，而dataclass会创建普通对象，可能会改掉值
+
+### 修复 TTL 解析、缺省 TTL 的读取和 short-memory 格式化错误
+
+为什么改成
+```
+metadata.get("TTL")
+```
+因为TTL是后面加的属性，以前的记忆没有TTL，如果写
+```
+metadata["TTL"]
+```
+如果没有TTL,一个返回None一个返回KeyError: 'ttl'
+
+### 修复validator.py 的 f-string 示例 JSON 已将 {} 转义为 {{}}，不会再被 Python 当作格式化表达式解析。
+
+## Reflection
+
+开始不断丰富企业级Agent项目的业务逻辑，这次加的是
+- Memory Validator
+- ValidationResult
+- MemoryAction
+
+## Next Sprint
+
+- Memory Reflection

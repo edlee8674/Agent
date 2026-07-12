@@ -14,9 +14,11 @@ Agent/
 ├── memory/
 │   ├── extractor.py
 │   ├── manager.py
+│   ├── merger.py
 │   ├── models.py
 │   ├── retriever.py
 │   ├── summary_memory.py
+│   ├── validator.py
 │   ├── vector_store.py
 │   └── writer.py
 │
@@ -71,6 +73,10 @@ Vector DB     Summary Memory
            ▼
 
  Memory Extractor
+
+           ▼
+           
+ Memory Validator
 
            ▼
 
@@ -147,6 +153,22 @@ Memory(
 
 ---
 
+## ### merger.py
+
+Responsible for：
+
+```
+Memory
++
+Memory
+
+↓
+
+Memory
+```
+
+---
+
 ## writer.py
 
 Responsible for writing memories.
@@ -200,8 +222,24 @@ Memory List
 
 Prompt
 ```
-
 Retriever never updates memory.
+
+---
+
+## validator.py
+
+assess：
+
+- ADD
+- UPDATE
+- MERGE
+- IGNORE
+
+output：
+
+```
+ValidationResult
+```
 
 ---
 
@@ -379,8 +417,6 @@ Planned modules
 
 ```
 memory/
-
-validator.py
 
 cleaner.py
 

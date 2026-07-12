@@ -175,7 +175,7 @@ Status
 
 ---
 
-## Current Lesson
+## Lesson 12
 
 Memory Validator
 
@@ -187,7 +187,7 @@ Topics
 
 Status
 
-🚧 In Progress
+✅ Completed
 
 ---
 

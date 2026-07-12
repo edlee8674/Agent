@@ -43,6 +43,6 @@ def delete_memory(id):
     collections.delete(
         ids=[id]
     )
+    collections.update(
 
-def merge_memory(id):
-    pass
+    )

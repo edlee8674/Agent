@@ -9,7 +9,8 @@ from memory.models import Memory
 @dataclass
 class ValidatorResult:
     action : MemoryAction
-    target_id : Optional[str]
+    new_memory: Memory
+    old_memory: Optional[Memory]
     reason : str
 
 
@@ -58,8 +59,17 @@ class MemoryValidator:
         response = chat(messages)
         content = json.loads(response.choices[0].message.content)
         print("validate_json_content:",content)
+        old_memory = next(
+            (memory for memory in memories if memory.id == content["target_id"]),
+            None,
+        )
+
+        if content["action"] in ("UPDATE", "MERGE") and old_memory is None:
+            raise ValueError("UPDATE/MERGE 必须指向已有记忆")
+
         return ValidatorResult(
             action=MemoryAction[content["action"]],
-            target_id=content["target_id"],
-            reason=content["reason"]
+            new_memory=new_memory,
+            old_memory=old_memory,
+            reason=content["reason"],
         )
