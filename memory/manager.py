@@ -1,11 +1,16 @@
 from dataclasses import replace
+from datetime import datetime
+from itertools import count
 
+from memory import reflection, writer, retriever
 from memory.action import MemoryAction
 from memory.merger import merge_memory
 from memory.models import Memory
-from memory.retriever import search_memory, format_vector_memory
+from memory.retriever import search_memory, format_vector_memory, count_memories_by_retriever, get_all_memory
 from memory.validator import MemoryValidator
 from memory.writer import write
+from runtime import state, scheduler
+from runtime.state import RuntimeState
 
 
 def save_memory(memory: Memory):
@@ -21,8 +26,27 @@ def save_memory(memory: Memory):
         )
     write(memory,result)
 
+    state.memory_count = count_memories_by_retriever()
+
+    if scheduler.should_reflect(state):
+        run_reflection(state)
+
+def reflect_memory(memories:  Memory):
+    result = reflection.reflect(memories)
+
+    writer.apply(result)
+
 def get_vector_memory(user_input):
     return search_memory(user_input)
+
+def run_reflection(state: RuntimeState):
+    memories = retriever.get_all_memory()
+    result = reflection.reflect(memories)
+    writer.apply(result)
+    state.memory_count = retriever.count_memories_by_retriever()
+    state.memory_count_after_reflection = state.memory_count
+    state.last_reflection_time = datetime.now()
+    state.reflection_count +=1
 
 def build_context(user_input):
 

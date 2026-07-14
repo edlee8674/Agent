@@ -45,6 +45,28 @@ class Memory:
                    distance=distance
                    )
 
+    @classmethod
+    def from_dict(cls, data: dict):
+        return cls(
+            id=data.get("id", str(uuid4())),
+            fact=data["fact"],
+            category=data["category"],
+            importance=data["importance"],
+            ttl=data.get("ttl"),
+            created_time=data.get("created_time"),
+            distance=data.get("distance")
+        )
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "fact": self.fact,
+            "category": self.category,
+            "importance": self.importance,
+            "ttl": self.ttl,
+            "created_time": self.created_time
+        }
+
     def to_prompt(self):
         return self.fact
 

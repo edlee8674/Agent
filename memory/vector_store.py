@@ -1,5 +1,4 @@
 import chromadb
-
 chroma_client  = chromadb.PersistentClient(
     path="./chromadb"
 )
@@ -43,6 +42,9 @@ def delete_memory(id):
     collections.delete(
         ids=[id]
     )
-    collections.update(
 
-    )
+def count_memories():
+    return collections.count()
+
+def get_all_memories():
+    return collections.get()

@@ -1,7 +1,7 @@
 
 from llm import create_embedding
 from memory.models import Memory
-from memory.vector_store import query_memory
+from memory.vector_store import query_memory, get_all_memories, count_memories
 
 
 def search_memory(text):
@@ -44,3 +44,9 @@ def format_short_memory(messages):
         f"{message['role']}:\n{message['content']}"
         for message in messages
     )
+
+def get_all_memory():
+    return to_memory_list(get_all_memories())
+
+def count_memories_by_retriever():
+    return count_memories()
