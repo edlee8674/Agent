@@ -1,438 +1,325 @@
-# AI Agent Architecture
+# Architecture
 
-## Project Structure
+This document describes the current architecture of the Memory Engine.
 
-```
-Agent/
-
-│
-├── config.py
-├── embedding.py
-├── embedding_cache.py
-├── main.py
-│
-├── memory/
-│   ├── extractor.py
-│   ├── manager.py
-│   ├── merger.py
-│   ├── models.py
-│   ├── retriever.py
-│   ├── summary_memory.py
-│   ├── validator.py
-│   ├── vector_store.py
-│   └── writer.py
-│
-├── prompt/
-│
-└── chromadb/
-```
+The project follows a layered design where each module has a single responsibility.
 
 ---
 
-# Overall Flow
+# High-Level Architecture
 
-```
-User
-
-    │
-
-    ▼
-
-Memory Manager
-
-    │
-
-    ├──────────────┐
-
-    ▼              ▼
-
-Retriever      Short Memory
-
-    │              │
-
-    ▼              ▼
-
-Vector DB     Summary Memory
-
-    │              │
-
-    └──────┬───────┘
-
-           ▼
-
-      Prompt Builder
-
-           ▼
-
-          LLM
-
-           ▼
-
- Assistant Response
-
-           ▼
-
- Memory Extractor
-
-           ▼
-           
- Memory Validator
-
-           ▼
-
- Memory Writer
-
-           ▼
-
- Vector Database
+```text
+                    User
+                      │
+                      ▼
+                MemoryManager
+                      │
+      ┌───────────────┴────────────────┐
+      │                                │
+      ▼                                ▼
+ PromptBuilder                 Memory Pipeline
+      │                                │
+      ▼                                ▼
+     LLM                        MemoryExtractor
+      │                                │
+      ▼                                ▼
+ Assistant Response          MemoryRetriever
+                                      │
+                                      ▼
+                               MemoryValidator
+                                      │
+                                      ▼
+                              ValidationResult
+                                      │
+                                      ▼
+                                MemoryWriter
+                                      │
+                                      ▼
+                              RuntimeScheduler
+                                      │
+                     should_reflect(state)?
+                          │            │
+                        No             Yes
+                          │            ▼
+                          │     MemoryReflection
+                          │            │
+                          │            ▼
+                          │    ReflectionResult
+                          │            │
+                          └────────► MemoryWriter
+                                       │
+                                       ▼
+                                  VectorStore
+                                       │
+                                       ▼
+                                    ChromaDB
 ```
 
 ---
 
 # Module Responsibilities
 
-## main.py
+## MemoryManager
 
-Program entry.
+Coordinates the entire memory workflow.
 
-Responsibilities
+Responsibilities:
 
-- Receive user input
-- Call Memory Manager
-- Invoke LLM
-- Invoke Memory Extractor
-- Save memory
+- Save new memories
+- Coordinate memory writing
+- Trigger background tasks
+- Update runtime state
 
----
-
-## manager.py
-
-Coordinator.
-
-Responsible for
-
-- Build Context
-- Retrieve memories
-- Save memories
-- Coordinate memory pipeline
-
-Manager should not access Chroma directly.
+The manager never accesses the database directly.
 
 ---
 
-## extractor.py
+## PromptBuilder
 
-Convert conversation into structured memories.
+Builds the final prompt sent to the LLM.
 
-Input
+Future context sources include:
 
-Conversation
-
-Output
-
-Memory[]
-
-Example
-
-```
-User
-
-↓
-
-Extractor
-
-↓
-
-Memory(
-    fact,
-    category,
-    importance,
-    ttl
-)
-```
+- Short Memory
+- Summary Memory
+- Vector Memory
+- Tool Context
 
 ---
 
-## ### merger.py
+## MemoryExtractor
 
-Responsible for：
+Extracts structured memories from the conversation.
 
-```
-Memory
-+
-Memory
+Output:
 
-↓
-
+```python
 Memory
 ```
 
 ---
 
-## writer.py
+## MemoryRetriever
 
-Responsible for writing memories.
+Searches similar memories from the vector database.
 
-Pipeline
+Responsibilities:
 
-```
-Memory
-
-↓
-
-Search Similar
-
-↓
-
-Update?
-
-↓
-
-Add?
-
-↓
-
-Vector Store
-```
+- Semantic search
+- Retrieve all memories
+- Memory count
+- Convert database records into Memory objects
 
 ---
 
-## retriever.py
+## MemoryValidator
 
-Responsible for querying memories.
+Determines how a new memory should be handled.
 
-Pipeline
+Output:
 
+```python
+ValidationResult
 ```
-User Question
 
-↓
-
-Embedding
-
-↓
-
-Vector Search
-
-↓
-
-Memory List
-
-↓
-
-Prompt
-```
-Retriever never updates memory.
-
----
-
-## validator.py
-
-assess：
+Possible actions:
 
 - ADD
 - UPDATE
 - MERGE
 - IGNORE
 
-output：
+---
 
-```
-ValidationResult
+## MemoryWriter
+
+Applies validated changes to the database.
+
+Responsibilities:
+
+- Add memory
+- Update memory
+- Delete memory
+
+The writer never performs business decisions.
+
+---
+
+## RuntimeScheduler
+
+Determines whether background maintenance tasks should run.
+
+Current strategy:
+
+- Reflection interval
+- Number of new memories since last reflection
+
+---
+
+## MemoryReflection
+
+Optimizes the entire memory collection.
+
+Responsibilities:
+
+- Merge duplicated memories
+- Remove outdated memories
+- Generate abstract memories
+- Improve long-term memory quality
+
+Output:
+
+```python
+ReflectionResult
 ```
 
 ---
 
-## vector_store.py
+## VectorStore
 
-Low-level database layer.
+Provides low-level database operations.
 
-Only responsible for
+Responsibilities:
 
-- add
-- update
-- delete
-- query
+- Add
+- Update
+- Delete
+- Query
+- Count
 
-No business logic.
+Current implementation:
 
----
+- ChromaDB
 
-## models.py
-
-Defines domain models.
-
-Current
-
-```
-Memory
-```
-
-Future
-
-```
-Conversation
-Message
-Memory
-Summary
-```
+The rest of the system never communicates with ChromaDB directly.
 
 ---
 
-## embedding.py
+## RuntimeState
 
-Responsible for
+Stores the runtime status of the memory engine.
 
-Text
+Current fields include:
+
+- memory_count
+- last_reflection_time
+- memory_count_after_reflection
+- reflection_count
+
+Future versions will persist RuntimeState using SQLite.
+
+---
+
+# Current Workflow
+
+```text
+User
 
 ↓
 
-Embedding
-
----
-
-## embedding_cache.py
-
-Embedding cache.
-
-Current
-
-SQLite
-
-Future
-
-Redis
-
----
-
-## summary_memory.py
-
-Responsible for
-
-Conversation
+PromptBuilder
 
 ↓
 
-Summary
+LLM
 
 ↓
 
-Replace history
+Assistant Response
+
+↓
+
+MemoryExtractor
+
+↓
+
+MemoryRetriever
+
+↓
+
+MemoryValidator
+
+↓
+
+MemoryWriter
+
+↓
+
+RuntimeScheduler
+
+↓
+
+MemoryReflection (optional)
+
+↓
+
+MemoryWriter
+```
 
 ---
 
 # Design Principles
 
-Current architecture follows
+The project follows several design principles.
 
-```
-LLM
+## Single Responsibility
 
-↓
+Each module performs only one task.
 
-Extractor
+Examples:
 
-↓
+- Retriever only retrieves.
+- Validator only validates.
+- Writer only writes.
 
-Writer
+---
 
-↓
+## Layered Architecture
 
-Vector Store
-
-↓
-
-Retriever
-
-↓
-
+```text
 Manager
 
 ↓
 
-Prompt
+Business Logic
+
+↓
+
+Persistence
+
+↓
+
+Database
 ```
 
-Business logic never appears inside Vector Store.
+Each layer depends only on the layer below it.
 
 ---
 
-# Future Architecture
+## Stateless Services
 
-```
-                User
+Business components remain stateless whenever possible.
 
-                  │
+Examples:
 
-                  ▼
+- Validator
+- Retriever
+- Reflection
+- Scheduler
 
-           Memory Manager
-
-                  │
-
-    ┌─────────────┼─────────────┐
-
-    ▼             ▼             ▼
-
-Short        Summary       Retriever
-
-Memory       Memory
-
-                  │
-
-                  ▼
-
-            Prompt Builder
-
-                  ▼
-
-                 LLM
-
-                  ▼
-
-             Memory Extractor
-
-                  ▼
-
-             Memory Validator
-
-                  ▼
-
-           Memory Deduplicator
-
-                  ▼
-
-             Memory Writer
-
-                  ▼
-
-             Vector Store
-```
+Shared runtime information is stored in RuntimeState.
 
 ---
 
-# Future Refactoring
+## Extensibility
 
-Planned modules
+Every module can be replaced independently.
 
-```
-memory/
+For example:
 
-cleaner.py
+- ChromaDB → Milvus
+- OpenAI → Qwen
+- Reflection strategy
+- Validation strategy
 
-reranker.py
-
-ttl.py
-
-prompt_builder.py
-
-session.py
-
-observer.py
-```
-
----
-
-# Project Goal
-
-This project is intended as a step-by-step implementation of a production-style AI Agent, emphasizing clean architecture, maintainability, and extensibility rather than quick prototypes.
+without changing the Manager.

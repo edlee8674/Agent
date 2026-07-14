@@ -147,16 +147,40 @@ Writer
 
 ---
 
+## v1.0
+
+Memory Reflection
+
+Added
+
+- Memory Reflection
+- ReflectionResult
+- MemoryOperation
+- Runtime Scheduler
+- Runtime State
+- Reflection Workflow
+
+Improved
+
+- Automatic Memory Consolidation
+- Long-term Memory Organization
+- Memory Quality Optimization
+- Background Memory Maintenance
+
+Refactored
+
+- Manager Workflow
+- Validation Pipeline
+- Reflection Pipeline
+
+--- 
+
 ## Next Version
 
 Memory Reflection
 
 ### Planned
 
-- Memory Reflection
-- ReflectionResult
-- Memory Compression
-- Memory Consolidation
 - Importance Evolution
 - Automatic Memory Cleanup
 

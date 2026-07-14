@@ -16,13 +16,26 @@ def search_memory_by_embedding(embedding):
     return to_memory_list(result)
 
 def to_memory_list(collection):
+    ids = collection["ids"]
+    documents = collection["documents"]
+    metadatas = collection["metadatas"]
+    distances = collection.get("distances")
+
+    if ids and isinstance(ids[0], list):
+        ids = ids[0]
+        documents = documents[0]
+        metadatas = metadatas[0]
+        distances = distances[0]
+    elif distances is None:
+        distances = [None] * len(ids)
+
     memories = []
-    for i in range(len(collection["ids"][0])):
-        metadata = collection["metadatas"][0][i]
-        distance = collection["distances"][0][i]
+    for i in range(len(ids)):
+        metadata = metadatas[i]
+        distance = distances[i]
         memory = Memory.from_chroma(
-            collection["ids"][0][i],
-            collection["documents"][0][i],
+            ids[i],
+            documents[i],
             metadata,
             distance,
         )

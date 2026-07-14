@@ -189,6 +189,19 @@ Status
 
 ✅ Completed
 
+## Lesson 13
+
+Memory Validator
+
+Topics
+
+- Memory Reflection
+- Memory scheduler
+
+Status
+
+✅ Completed
+
 ---
 
 ## Upcoming
@@ -200,7 +213,6 @@ Status
 - Hybrid Retrieval
 - Tool Calling
 - ReAct
-- Reflection
 - Planner
 - LangGraph
 - MCP

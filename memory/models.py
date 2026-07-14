@@ -53,7 +53,7 @@ class Memory:
             category=data["category"],
             importance=data["importance"],
             ttl=data.get("ttl"),
-            created_time=data.get("created_time"),
+            created_time=data.get("created_time") or date.today().isoformat(),
             distance=data.get("distance")
         )
 

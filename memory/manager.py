@@ -1,17 +1,19 @@
 from dataclasses import replace
 from datetime import datetime
-from itertools import count
 
-from memory import reflection, writer, retriever
 from memory.action import MemoryAction
 from memory.merger import merge_memory
 from memory.models import Memory
+from memory.reflection import MemoryReflection
 from memory.retriever import search_memory, format_vector_memory, count_memories_by_retriever, get_all_memory
 from memory.validator import MemoryValidator
-from memory.writer import write
-from runtime import state, scheduler
+from memory.writer import apply, write
+from runtime.scheduler import RuntimeScheduler
 from runtime.state import RuntimeState
 
+runtime_state = RuntimeState()
+runtime_scheduler = RuntimeScheduler()
+memory_reflection = MemoryReflection()
 
 def save_memory(memory: Memory):
     memories = search_memory(memory.fact)
@@ -24,26 +26,26 @@ def save_memory(memory: Memory):
             action=MemoryAction.UPDATE,
             new_memory=merged_memory,
         )
-    write(memory,result)
+    write(result)
 
-    state.memory_count = count_memories_by_retriever()
+    runtime_state.memory_count = count_memories_by_retriever()
 
-    if scheduler.should_reflect(state):
-        run_reflection(state)
+    if runtime_scheduler.should_reflect(runtime_state):
+        run_reflection(runtime_state)
 
-def reflect_memory(memories:  Memory):
-    result = reflection.reflect(memories)
+def reflect_memory(memories: list[Memory]):
+    result = memory_reflection.reflect(memories)
 
-    writer.apply(result)
+    apply(result)
 
 def get_vector_memory(user_input):
     return search_memory(user_input)
 
 def run_reflection(state: RuntimeState):
-    memories = retriever.get_all_memory()
-    result = reflection.reflect(memories)
-    writer.apply(result)
-    state.memory_count = retriever.count_memories_by_retriever()
+    memories = get_all_memory()
+    result = memory_reflection.reflect(memories)
+    apply(result)
+    state.memory_count = count_memories_by_retriever()
     state.memory_count_after_reflection = state.memory_count
     state.last_reflection_time = datetime.now()
     state.reflection_count +=1

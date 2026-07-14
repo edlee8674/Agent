@@ -89,15 +89,17 @@ Retriever
     ↓
 Writer
     ↓
+Reflection
+    ↓
 Vector Store
 
 Remaining
 
-- [ ] Memory Validator
+- [x] Memory Validator
 - [ ] Memory Cleaner
 - [ ] Memory Ranking
 - [ ] TTL Cleaner
-- [ ] Memory Compression
+- [x] Memory Compression
 - [ ] Session Memory
 - [ ] Prompt Builder
 

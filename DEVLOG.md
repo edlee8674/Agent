@@ -177,7 +177,7 @@ metadata.get(...)
 - MemoryAction
 
 
-# Sprint 01
+# Sprint 02
 Date
 
 2026-07-12
@@ -256,6 +256,132 @@ metadata["TTL"]
 如果没有TTL,一个返回None一个返回KeyError: 'ttl'
 
 ### 修复validator.py 的 f-string 示例 JSON 已将 {} 转义为 {{}}，不会再被 Python 当作格式化表达式解析。
+
+## Reflection
+
+开始不断丰富企业级Agent项目的业务逻辑，这次加的是
+- Memory Validator
+- ValidationResult
+- MemoryAction
+
+
+
+# Sprint 03
+Date
+
+2026-07-14
+
+Theme
+
+- Memory Reflection
+- Runtime Scheduler
+- Reflection Workflow
+
+---
+
+## Background
+
+加入记忆反思功能，用来压缩、提取、简化记忆，防止随着angent使用，记忆越来越多
+---
+
+## Decisions
+新Memory生命周期将改造成：
+```
+Conversation
+
+↓
+
+Extractor
+
+↓
+
+Memory
+
+↓
+
+Validator
+
+↓
+
+Writer
+
+↓
+
+Reflections(Optional)
+
+VectorDB
+```
+
+---
+
+## Problems
+
+### Dependency Management
+Manager 现在持有真正的 RuntimeState() 与 RuntimeScheduler() 实例，不再把 state / scheduler 模块当对象使用
+```
+runtime_state = RuntimeState()
+runtime_scheduler = RuntimeScheduler()
+memory_reflection = MemoryReflection()
+```
+
+
+### MemoryAction 增加 DELETE，避免 Reflection 解析 DELETE 操作时报 KeyError
+
+
+### 修复 collections.get() 的扁平结构解析；此前 Retriever 仅能解析 query() 的嵌套结构，Reflection 获取全部记忆时会出错
+
+query() 是“对一个或多个查询向量分别返回结果”，所以结果多了一层“第几个查询”的嵌套。即使只查询一个向量，也会有外层列表：
+
+```
+collections.query(query_embeddings=[embedding])
+```
+示例结果：
+
+```
+{
+    "ids": [
+        ["id-1", "id-2"]
+    ],
+    "documents": [
+        ["用户计划去京都定居", "用户喜欢日本文化"]
+    ],
+    "metadatas": [
+        [
+            {"category": "plan", "importance": 0.8, "created_time": "2026-07-14"},
+            {"category": "preference", "importance": 0.7, "created_time": "2026-07-14"},
+        ]
+    ],
+    "distances": [
+        [0.12, 0.34]
+    ],
+}
+```
+这里的第一层 [...] 对应“第 0 个查询向量”；第二层才是这个查询向量命中的 Memory 列表。因此原来的写法适用于它：
+```
+collection["ids"][0][i]
+collection["documents"][0][i]
+collection["metadatas"][0][i]
+collection["distances"][0][i]
+```
+
+而 get() 不是向量检索，它只是直接取出 Collection 中的记录，没有“第几个查询向量”这一层，也没有距离：
+```
+collections.get()
+```
+
+示例结果：
+```
+{
+    "ids": ["id-1", "id-2"],
+    "documents": ["用户计划去京都定居", "用户喜欢日本文化"],
+    "metadatas": [
+        {"category": "plan", "importance": 0.8, "created_time": "2026-07-14"},
+        {"category": "preference", "importance": 0.7, "created_time": "2026-07-14"},
+    ],
+}
+
+简而言之,query()返回的是二维数组,get()返回的是一维数组，并且没有distances
+```
 
 ## Reflection
 

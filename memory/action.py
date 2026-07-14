@@ -6,6 +6,8 @@ class MemoryAction(Enum):
 
     UPDATE = "update"
 
+    DELETE = "delete"
+
     IGNORE = "ignore"
 
     MERGE = "merge"

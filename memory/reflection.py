@@ -1,22 +1,9 @@
 import json
-from dataclasses import dataclass, field
-
-from pydantic_core.core_schema import none_schema
 
 from llm import chat
 from memory.action import MemoryAction
 from memory.models import Memory
-from memory.operation import MemoryOperation
-
-
-@dataclass
-class ReflectionResult:
-
-    add: list[Memory] = field(default_factory=list)
-
-    update: list[Memory] = field(default_factory=list)
-
-    delete: list[str] = field(default_factory=list)
+from memory.operation import MemoryOperation, ReflectionResult
 
 
 class MemoryReflection:
@@ -85,8 +72,9 @@ class MemoryReflection:
         for op in content["operations"]:
             action = MemoryAction[op["action"]]
             memory = None
-            if "memory" in op:
-                memory = Memory.from_dict(op["memory"])
+            memory_data = op.get("memory")
+            if memory_data is not None:
+                memory = Memory.from_dict(memory_data)
             operations.append(
                 MemoryOperation(
                     action=action,
@@ -96,4 +84,4 @@ class MemoryReflection:
                 )
             )
 
-        return ReflectionResult(operations)
+        return ReflectionResult(operations=operations)
