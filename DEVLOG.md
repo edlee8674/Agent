@@ -393,3 +393,131 @@ collections.get()
 ## Next Sprint
 
 - Memory Reflection
+
+
+# Sprint 04
+
+Date
+
+2026-07-15
+
+Theme
+
+Runtime State Persistence
+
+---
+
+## Background
+
+Reflection Scheduler 需要记录上次反思时间、当前记忆数量和反思次数。
+
+如果状态只保存在内存中，程序重启后这些数据会丢失，
+Scheduler 无法依据上次运行结果继续判断是否应执行 Reflection。
+
+因此新增 `RuntimeStateStore`，使用 SQLite 持久化 `RuntimeState`。
+
+---
+
+## Decisions
+
+Manager 持有状态存储实例，并在启动时恢复状态：
+
+```
+runtime_store = RuntimeStateStore()
+runtime_state = runtime_store.load()
+```
+
+Reflection 的职责拆分为：
+
+```
+reflect_memory(memories)
+    ↓
+Reflection + Writer.apply
+
+run_reflection()
+    ↓
+获取全部记忆
+更新 RuntimeState
+保存 RuntimeState
+```
+
+`run_reflection()` 使用 Manager 中唯一的 `runtime_state`，
+不再接收重复的 `state` 参数。
+
+---
+
+## Problems
+
+### SQLite 常量不是 SQL 列名
+
+初始查询写为：
+
+```
+WHERE id = RUNTIME_ID
+```
+
+SQLite 会把 `RUNTIME_ID` 当作列名，导致：
+
+```
+sqlite3.OperationalError: no such column: RUNTIME_ID
+```
+
+修复为参数化查询：
+
+```
+cursor = self.conn.execute(
+    "SELECT ... FROM runtime_state WHERE id = ?",
+    (RUNTIME_ID,),
+)
+row = cursor.fetchone()
+```
+
+`fetchone()` 属于 cursor，不属于 SQLite connection。
+
+---
+
+### RuntimeState 只保存数据
+
+初始代码调用：
+
+```
+runtime_state.save(runtime_state)
+```
+
+`RuntimeState` 是 dataclass，只表示状态数据，
+不负责数据库操作。
+
+因此改为由 Store 持久化：
+
+```
+runtime_store.save(runtime_state)
+```
+
+每次保存 Memory 后，如果本次没有触发 Reflection，
+也保存更新后的 `memory_count`，保证重启后状态仍然一致。
+
+---
+
+### 关闭的是 Store 实例
+
+`main.py` 最初导入的是 `runtime.state_store` 模块，
+不能直接调用：
+
+```
+state_store.close()
+```
+
+应关闭 Manager 创建的实例：
+
+```
+runtime_store.close()
+```
+
+---
+
+## Verification
+
+- 首次加载返回默认 `RuntimeState`
+- 保存状态后关闭 Store
+- 重新打开 SQLite 文件后可恢复相同的状态
+- `memory.manager` 可正常导入

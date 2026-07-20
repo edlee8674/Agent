@@ -1,12 +1,10 @@
 from datetime import datetime, timedelta
 
 from config import REFLECT_INTERVAL_HOURS, REFLECT_MEMORY_THRESHOLD
-from runtime import state
 from runtime.state import RuntimeState
 
 
 class RuntimeScheduler:
-
 
     def should_reflect(self, state: RuntimeState):
         if state.last_reflection_time is None:

@@ -109,7 +109,7 @@ Remaining
 
 - [ ] Tool Router
 - [ ] ReAct
-- [ ] Reflection
+- [x] Reflection
 - [ ] Planning
 - [ ] Workflow
 - [ ] Multi-Step Reasoning

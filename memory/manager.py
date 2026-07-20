@@ -9,9 +9,11 @@ from memory.retriever import search_memory, format_vector_memory, count_memories
 from memory.validator import MemoryValidator
 from memory.writer import apply, write
 from runtime.scheduler import RuntimeScheduler
-from runtime.state import RuntimeState
+from runtime.state_store import RuntimeStateStore
 
-runtime_state = RuntimeState()
+runtime_store = RuntimeStateStore()
+runtime_state = runtime_store.load()
+
 runtime_scheduler = RuntimeScheduler()
 memory_reflection = MemoryReflection()
 
@@ -31,24 +33,26 @@ def save_memory(memory: Memory):
     runtime_state.memory_count = count_memories_by_retriever()
 
     if runtime_scheduler.should_reflect(runtime_state):
-        run_reflection(runtime_state)
+        run_reflection()
+    else:
+        runtime_store.save(runtime_state)
 
 def reflect_memory(memories: list[Memory]):
     result = memory_reflection.reflect(memories)
-
     apply(result)
+
 
 def get_vector_memory(user_input):
     return search_memory(user_input)
 
-def run_reflection(state: RuntimeState):
-    memories = get_all_memory()
-    result = memory_reflection.reflect(memories)
-    apply(result)
-    state.memory_count = count_memories_by_retriever()
-    state.memory_count_after_reflection = state.memory_count
-    state.last_reflection_time = datetime.now()
-    state.reflection_count +=1
+
+def run_reflection():
+    reflect_memory(get_all_memory())
+    runtime_state.memory_count = count_memories_by_retriever()
+    runtime_state.memory_count_after_reflection = runtime_state.memory_count
+    runtime_state.last_reflection_time = datetime.now()
+    runtime_state.reflection_count += 1
+    runtime_store.save(runtime_state)
 
 def build_context(user_input):
 

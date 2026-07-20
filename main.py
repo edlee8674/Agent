@@ -1,5 +1,5 @@
 from llm import chat
-from memory.manager import build_context
+from memory.manager import build_context, runtime_store
 from memory.extractor import extract_memory
 from memory.manager import save_memory
 
@@ -25,5 +25,5 @@ for memory in memories:
     if memory.importance > 0.5:
         save_memory(memory)
 
-
+runtime_store.close()
 print("Bot: " + assistant_content)
