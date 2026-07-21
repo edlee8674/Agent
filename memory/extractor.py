@@ -1,10 +1,15 @@
 import json
+
+from llm import LLMClient
 from memory.models import Memory
-from llm import chat
 
-def extract_memory(user_input,assistant_content):
 
-    prompt = f"""
+class MemoryExtractor:
+    def __init__(self, llm: LLMClient):
+        self.llm = llm
+
+    def extract_memory(self, user_input, assistant_content):
+        prompt = f"""
 你是一个 Memory Extractor。
 你的任务是从用户聊天中提取未来有价值的信息。
 只提取事实，不保存AI建议。
@@ -54,36 +59,21 @@ importance
 ttl
 过期时间。ttl 请根据当前日期开始计算。
 
-
 用户输入：
 
 {user_input}
 
 AI回答：
 {assistant_content}
-
 """
-    messages = [
-        {
-            "role": "user",
-            "content": prompt
-        }
-    ]
-    response = chat(messages)
-    content = response.choices[0].message.content
-
-    data = json.loads(content)
-
-    memories = []
-
-    for item in data["memories"]:
-        memories.append(
+        response = self.llm.chat([{"role": "user", "content": prompt}])
+        data = json.loads(response.choices[0].message.content)
+        return [
             Memory.create(
                 fact=item["fact"],
                 category=item["category"],
                 importance=item["importance"],
                 ttl=item["ttl"],
             )
-        )
-
-    return memories
+            for item in data["memories"]
+        ]

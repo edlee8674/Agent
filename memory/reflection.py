@@ -1,12 +1,15 @@
 import json
 
-from llm import chat
+from llm import LLMClient
 from memory.action import MemoryAction
 from memory.models import Memory
 from memory.operation import MemoryOperation, ReflectionResult
 
 
 class MemoryReflection:
+    def __init__(self, llm: LLMClient):
+        self.llm = llm
+
 
     def reflect(
         self,
@@ -66,7 +69,7 @@ class MemoryReflection:
                 "content": prompt
             }
         ]
-        response = chat(messages)
+        response = self.llm.chat(messages)
         content = json.loads(response.choices[0].message.content)
         operations = []
         for op in content["operations"]:

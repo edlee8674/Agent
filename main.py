@@ -1,29 +1,26 @@
-from llm import chat
-from memory.manager import build_context, runtime_store
-from memory.extractor import extract_memory
-from memory.manager import save_memory
+from memory.application import MemoryApplication
 
-user_input = input("User: ")
+memory_app = MemoryApplication()
 
-context = build_context(user_input)
+try:
+    user_input = input("User: ")
+    context = memory_app.build_context(user_input)
+    messages = context + [
+        {
+            "role": "user",
+            "content": user_input,
+        }
+    ]
 
-messages = context + [
-    {
-     "role":"user",
-     "content":user_input
-    }
-]
+    response = memory_app.llm.chat(messages)
+    assistant_content = response.choices[0].message.content
+    memories = memory_app.extract_memory(user_input, assistant_content)
 
-response = chat(messages)
+    for memory in memories:
+        print("extract_memory:", memory)
+        if memory.importance > 0.5:
+            memory_app.save_memory(memory)
 
-assistant_content = response.choices[0].message.content
-
-memories = extract_memory(user_input,assistant_content)
-
-for memory in memories:
-    print("extract_memory:",memory)
-    if memory.importance > 0.5:
-        save_memory(memory)
-
-runtime_store.close()
-print("Bot: " + assistant_content)
+    print("Bot: " + assistant_content)
+finally:
+    memory_app.close()

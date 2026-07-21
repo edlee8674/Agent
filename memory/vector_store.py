@@ -1,50 +1,38 @@
 import chromadb
-chroma_client  = chromadb.PersistentClient(
-    path="./chromadb"
-)
-
-collections = chroma_client.get_or_create_collection(
-    name="memory"
-)
-
-memory_data = []
-
-def add_memory(id, text, embedding,metadata):
-
-    collections.add(
-        embeddings=[embedding],
-        documents=[text],
-        metadatas=[metadata],
-        ids=[id]
-    )
-    print("add-collections:",collections)
 
 
-def query_memory(embeddings,top_k=3):
+class MemoryRepository:
+    def __init__(self, path="./chromadb", collection_name="memory"):
+        self.client = chromadb.PersistentClient(path=path)
+        self.collection = self.client.get_or_create_collection(name=collection_name)
 
-    return collections.query(
-        query_embeddings=[embeddings],
-        n_results=top_k
-    )
+    def add_memory(self, memory_id, text, embedding, metadata):
+        self.collection.add(
+            embeddings=[embedding],
+            documents=[text],
+            metadatas=[metadata],
+            ids=[memory_id],
+        )
 
+    def query_memory(self, embedding, top_k=3):
+        return self.collection.query(
+            query_embeddings=[embedding],
+            n_results=top_k,
+        )
 
-def update_memory(id, text, embedding,metadata):
-    collections.update(
-        embeddings=[embedding],
-        documents=[text],
-        metadatas=[metadata],
-        ids=[id]
-    )
-    print("update-collections:", collections)
+    def update_memory(self, memory_id, text, embedding, metadata):
+        self.collection.update(
+            embeddings=[embedding],
+            documents=[text],
+            metadatas=[metadata],
+            ids=[memory_id],
+        )
 
+    def delete_memory(self, memory_id):
+        self.collection.delete(ids=[memory_id])
 
-def delete_memory(id):
-    collections.delete(
-        ids=[id]
-    )
+    def count_memories(self):
+        return self.collection.count()
 
-def count_memories():
-    return collections.count()
-
-def get_all_memories():
-    return collections.get()
+    def get_all_memories(self):
+        return self.collection.get()

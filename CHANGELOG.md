@@ -1,198 +1,99 @@
 # Changelog
 
-All notable changes to this project will be documented here.
+项目的重要功能与代码结构变更记录。
 
 ---
 
-## v0.1.0
+## v1.1.0 — 2026-07-21
 
-Initial project.
+### Application Layer Refactoring
 
-### Features
+#### Added
 
-- OpenAI Chat Completion
-- Streaming Output
-- Prompt Engineering
+- `MemoryApplication`：编排上下文构建、记忆保存与 Reflection 流程。
+- `RuntimeApplication`：编排运行状态加载、调度判断与持久化。
+- `LLMClient`：统一 Chat Completion、Embedding 与 Embedding Cache。
+- `MemoryRepository`：封装 Chroma 的增删改查与计数操作。
 
----
+#### Refactored
 
-## v0.2.0
+- `MemoryExtractor`、`MemoryRetriever`、`MemoryWriter`、`MemoryValidator`、`MemoryMerger`、`MemoryReflection` 改为接收依赖实例的 class。
+- `main.py` 通过 `MemoryApplication` 执行 Memory 流程。
+- `RuntimeApplication` 不再反向依赖 Memory Retriever；Memory 数量由 Application Layer 传入。
+- `memory/manager.py` 不再承担流程编排。
 
-Conversation Memory
+#### Fixed
 
-### Added
-
-- Short Memory
-- Token Counter
-- Message Trimming
-
----
-
-## v0.3.0
-
-Summary Memory
-
-### Added
-
-- Conversation Summary
-- Token Compression
-- Automatic Summarization
+- Reflection 后先重新统计 Memory 数量，再保存 Reflection 基线状态。
+- 主程序使用 `try/finally` 关闭 Runtime State Store。
 
 ---
 
-## v0.4.0
+## v1.0.0 — 2026-07-15
 
-Vector Memory
+### Memory Reflection and Runtime State
 
-### Added
+#### Added
 
-- Embedding
-- Cosine Similarity
-- Vector Search
-- ChromaDB
+- Memory Reflection、`ReflectionResult` 与 `MemoryOperation`。
+- Runtime Scheduler、`RuntimeState` 与 SQLite `RuntimeStateStore`。
+- Reflection 的 ADD、UPDATE、DELETE、MERGE 写入分发。
 
----
+#### Fixed
 
-## v0.5.0
-
-Memory Extraction
-
-### Added
-
-- Memory Extractor
-- Importance Score
-- Memory Category
-- TTL
+- 支持 Chroma `query()` 的嵌套结果与 `get()` 的扁平结果转换为 `Memory`。
+- 修复 Runtime State 的 SQLite 参数化查询与状态持久化。
 
 ---
 
-## v0.6.0
+## v0.9.0 — 2026-07-12
 
-Memory Storage
+### Memory Validation Pipeline
 
-### Added
+#### Added
 
-- Memory Writer
-- Save Memory
-- Update Memory
-- Memory Deduplication
+- `MemoryAction`、`ValidatorResult`、`MemoryValidator`、`MemoryMerger`。
+- ADD、UPDATE、MERGE、IGNORE 的记忆写入决策。
 
----
+#### Fixed
 
-## v0.7.0
-
-Memory Architecture Refactoring
-
-### Refactored
-
-- Introduced `Memory` dataclass
-- Split Retriever layer
-- Split Vector Store layer
-- Simplified Manager layer
-- Separated business logic from storage
+- Chroma distance 读取、TTL 兼容、Validator JSON f-string 与 Writer 参数传递错误。
 
 ---
 
 ## v0.8.0
 
-Embedding Cache
+### Embedding Cache
 
-### Added
-
-- SQLite Embedding Cache
-- Persistent Embedding Storage
-
-### Improved
-
-- Reduced Embedding API Calls
-- Faster Startup
-- Automatic Cache Lookup
+- 添加 SQLite Embedding Cache。
+- 缓存命中时跳过 Embedding API 调用。
 
 ---
 
-## v0.9.0
+## v0.7.0
 
-Memory Validation Pipeline
+### Memory Architecture Refactoring
 
-### Added
-
-- MemoryAction
-- ValidationResult
-- MemoryValidator
-- MemoryMerger
-
-### Refactored
-
-- Introduced LLM-based memory validation
-- Manager becomes Pipeline Orchestrator
-- Writer focuses on database operations only
-- Merger is responsible for memory consolidation
-- Unified Chat & Embedding APIs in `llm.py`
-
-### Pipeline
-
-```
-Extractor
-    ↓
-Retriever
-    ↓
-Validator
-    ↓
-ValidationResult
-    ↓
-Merger (optional)
-    ↓
-Writer
-```
+- 引入 `Memory` dataclass。
+- 拆分 Retriever、Writer 与 Vector Store。
+- 将 Memory 业务逻辑与 Chroma 数据访问分离。
 
 ---
 
-## v1.0
+## v0.1.0 – v0.6.0
 
-Memory Reflection
-
-Added
-
-- Memory Reflection
-- ReflectionResult
-- MemoryOperation
-- Runtime Scheduler
-- Runtime State
-- Reflection Workflow
-
-Improved
-
-- Automatic Memory Consolidation
-- Long-term Memory Organization
-- Memory Quality Optimization
-- Background Memory Maintenance
-
-Refactored
-
-- Manager Workflow
-- Validation Pipeline
-- Reflection Pipeline
-
---- 
-
-## Next Version
-
-Memory Reflection
-
-### Planned
-
-- Importance Evolution
-- Automatic Memory Cleanup
+- LLM Chat Completion、流式输出、Prompt Engineering。
+- Short Memory、Summary Memory、Token 处理。
+- Embedding、向量检索与 ChromaDB。
+- Memory Extractor、重要性、分类、TTL。
+- Memory Writer、保存、更新与去重。
 
 ---
 
-## Future Roadmap
+## Next
 
-- Prompt Builder
-- TTL Scheduler
 - Memory Cleaner
-- Reranker
-- Hybrid Search
-- Agent Workflow
-- Tool Calling
-- Multi-Agent
+- Memory Ranking
+- TTL Cleaner
+- Session Memory
+- Prompt Builder

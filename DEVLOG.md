@@ -390,11 +390,6 @@ collections.get()
 - ValidationResult
 - MemoryAction
 
-## Next Sprint
-
-- Memory Reflection
-
-
 # Sprint 04
 
 Date
@@ -513,11 +508,158 @@ state_store.close()
 runtime_store.close()
 ```
 
+# Sprint 05
+
+Date
+
+2026-07-21
+
+Theme
+
+Application Layer
+
+---
+
+## Background
+
+随着 Validator、Merger、Reflection、Scheduler 和 Runtime State 增加，
+旧的 `manager.py` 同时承担了查询、写入、状态更新和持久化。
+
+Manager 已经不再只是协调入口，而是在直接创建外部客户端、调用业务规则和保存状态。
+
+因此开始 Application Layer 重构：
+
+- `memory/application.py` 负责 Memory 用例流程。
+- `runtime/application.py` 负责 Runtime State 用例流程。
+- 外部依赖通过 class 初始化后传入业务组件。
+
+---
+
+## Decisions
+
+### Application 负责流程编排
+
+`MemoryApplication` 统一编排：
+
+```text
+Build Context
+Save Memory
+Run Reflection
+Close Runtime Store
+```
+
+`RuntimeApplication` 统一编排：
+
+```text
+Load State
+Refresh Memory Count
+Should Reflect
+Update Reflection State
+Persist State
+```
+
+这样 `main.py` 只保留程序入口职责。
+
+---
+
+### 有外部依赖的组件使用 class
+
+这次将持有 API、Chroma 或 SQLite 依赖的模块改为 class：
+
+```text
+LLMClient
+MemoryRepository
+MemoryRetriever
+MemoryWriter
+MemoryExtractor
+MemoryValidator
+MemoryMerger
+MemoryReflection
+```
+
+纯数据或纯规则保持简单：
+
+```text
+Memory
+MemoryAction
+MemoryOperation
+ReflectionResult
+RuntimeState
+RuntimeScheduler
+format_vector_memory
+```
+
+业务组件不再自行创建 OpenAI client 或 Chroma client，
+而是接收已经初始化好的依赖。
+
+---
+
+## Problems
+
+### Application 初始化引用了不存在的类
+
+最初的 `MemoryApplication` 写为：
+
+```python
+self.writer = Writer()
+self.retriever = Retriever()
+self.merger.merge_memory(...)
+```
+
+但项目中只有函数式 Writer/Retriever，也没有初始化 `self.merger`，
+会在创建 Application 时发生 `NameError` 或 `AttributeError`。
+
+修复后由 Application 创建明确的依赖图：
+
+```python
+self.llm = LLMClient()
+self.repository = MemoryRepository()
+self.writer = MemoryWriter(self.llm, self.repository)
+self.retriever = MemoryRetriever(self.llm, self.repository)
+self.merger = MemoryMerger(self.llm)
+```
+
+---
+
+### Runtime Layer 不反向依赖 Memory Layer
+
+`RuntimeApplication` 最初直接导入 Retriever 来统计 Memory 数量。
+
+这会让 Runtime Application 反向依赖 Memory Application 相关模块，
+并增加未来循环依赖的风险。
+
+因此改为：
+
+```python
+runtime.refresh_memory_count(
+    retriever.count_memories()
+)
+```
+
+MemoryApplication 负责取得数量，RuntimeApplication 只保存该数量。
+
+---
+
+### Reflection 状态更新顺序
+
+Reflection 会新增、更新或删除 Memory。
+
+因此必须在 Reflection 写入完成后重新统计 Memory 数量，
+再将该值记录为 `memory_count_after_reflection`。
+
+```text
+Reflection Write
+    ↓
+Refresh Memory Count
+    ↓
+after_reflection
+```
+
 ---
 
 ## Verification
 
-- 首次加载返回默认 `RuntimeState`
-- 保存状态后关闭 Store
-- 重新打开 SQLite 文件后可恢复相同的状态
-- `memory.manager` 可正常导入
+- 使用 Fake LLM、Repository 与 Runtime 验证 `MemoryApplication` 保存与反思编排。
+- 验证 Application 模块可正常导入。
+- 验证全项目 Python 编译。
+

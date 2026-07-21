@@ -2,7 +2,7 @@ import json
 from dataclasses import dataclass
 from typing import Optional
 
-from llm import chat
+from llm import LLMClient
 from memory.action import MemoryAction
 from memory.models import Memory
 
@@ -15,6 +15,9 @@ class ValidatorResult:
 
 
 class MemoryValidator:
+    def __init__(self, llm: LLMClient):
+        self.llm = llm
+
     def validate(self,new_memory: Memory,memories: list[Memory])-> ValidatorResult:
         prompt = f"""
         你是一名 Memory Validator。
@@ -56,7 +59,7 @@ class MemoryValidator:
                 "content": prompt
             }
         ]
-        response = chat(messages)
+        response = self.llm.chat(messages)
         content = json.loads(response.choices[0].message.content)
         print("validate_json_content:",content)
         old_memory = next(
