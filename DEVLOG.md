@@ -531,7 +531,7 @@ Manager 已经不再只是协调入口，而是在直接创建外部客户端、
 
 - `memory/application.py` 负责 Memory 用例流程。
 - `runtime/application.py` 负责 Runtime State 用例流程。
-- 外部依赖通过 class 初始化后传入业务组件。
+- Bootstrap 统一创建外部依赖并注入业务组件。
 
 ---
 
@@ -590,7 +590,7 @@ format_vector_memory
 ```
 
 业务组件不再自行创建 OpenAI client 或 Chroma client，
-而是接收已经初始化好的依赖。
+而是接收 Bootstrap 创建好的依赖。
 
 ---
 
@@ -609,15 +609,66 @@ self.merger.merge_memory(...)
 但项目中只有函数式 Writer/Retriever，也没有初始化 `self.merger`，
 会在创建 Application 时发生 `NameError` 或 `AttributeError`。
 
-修复后由 Application 创建明确的依赖图：
+修复后由 Bootstrap 创建明确的依赖图：
 
 ```python
-self.llm = LLMClient()
-self.repository = MemoryRepository()
-self.writer = MemoryWriter(self.llm, self.repository)
-self.retriever = MemoryRetriever(self.llm, self.repository)
-self.merger = MemoryMerger(self.llm)
+llm = LLMClient(EmbeddingCache())
+repository = MemoryRepository()
+writer = MemoryWriter(llm, repository)
+retriever = MemoryRetriever(llm, repository)
+merger = MemoryMerger(llm)
+
+MemoryApplication(
+    llm=llm,
+    retriever=retriever,
+    writer=writer,
+    merger=merger,
+    ...,
+)
 ```
+
+---
+
+### 单元素 tuple 导致 LLMClient 调用失败
+
+注入 LLM 后，`MemoryApplication` 中曾写成：
+
+```python
+self.llm = llm,
+```
+
+末尾逗号会创建单元素 tuple，因此主程序调用：
+
+```python
+memory_app.llm.chat(messages)
+```
+
+会报：
+
+```text
+AttributeError: 'tuple' object has no attribute 'chat'
+```
+
+修复为：
+
+```python
+self.llm = llm
+```
+
+---
+
+### 不在模块导入时加载 Tokenizer
+
+`summary_memory.py` 原本在模块顶层执行：
+
+```python
+encoding = tiktoken.get_encoding("cl100k_base")
+```
+
+当本地缺少编码缓存时，导入模块会触发网络下载；即使当前流程不使用 Summary Memory，
+也可能因此无法启动或运行测试。
+
+现在仅在 `count_tokens()` 被调用时加载编码，避免与当前 Memory Application 的启动过程耦合。
 
 ---
 
@@ -662,4 +713,5 @@ after_reflection
 - 使用 Fake LLM、Repository 与 Runtime 验证 `MemoryApplication` 保存与反思编排。
 - 验证 Application 模块可正常导入。
 - 验证全项目 Python 编译。
+- 验证 Bootstrap 创建的 `MemoryApplication.llm` 是 `LLMClient`，而不是 tuple。
 

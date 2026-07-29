@@ -11,10 +11,7 @@ class MemoryReflection:
         self.llm = llm
 
 
-    def reflect(
-        self,
-        memories: list[Memory]
-    ) -> ReflectionResult:
+    def reflect(self, memories: list[Memory]) -> ReflectionResult:
         prompt = f"""
         你是一名 Memory Reflection Agent。
         你的职责不是提取新的记忆。
@@ -40,25 +37,30 @@ class MemoryReflection:
 
         memories : {memories}
 
-        返回json格式，例：
+        只返回一个合法 JSON 对象，不要 Markdown 代码围栏、解释文字或省略号。
+        如果不需要执行任何操作，返回：
+
+        {{"operations": []}}
+
+        返回 JSON 格式示例：
+
         {{
           "operations": [
             {{
               "action": "DELETE",
-               "target_ids":[
-                "123"
-                ],
+              "target_ids": ["123"],
               "reason": "已经过期"
             }},
             {{
-            "action":"UPDATE",
-            "target_ids":[
-                "123"
-            ],
-            "memory":{{
-                ...
-            }},
-            "reason":"..."
+              "action": "UPDATE",
+              "target_ids": ["123"],
+              "memory": {{
+                "fact": "用户计划在北海道旅行",
+                "category": "future_plan",
+                "importance": 0.9,
+                "ttl": null
+              }},
+              "reason": "补充了已有计划"
             }}
           ]
         }}
@@ -70,7 +72,7 @@ class MemoryReflection:
             }
         ]
         response = self.llm.chat(messages)
-        content = json.loads(response.choices[0].message.content)
+        content = self._parse_json(response.choices[0].message.content)
         operations = []
         for op in content["operations"]:
             action = MemoryAction[op["action"]]
@@ -88,3 +90,22 @@ class MemoryReflection:
             )
 
         return ReflectionResult(operations=operations)
+
+    @staticmethod
+    def _parse_json(content: str):
+        content = content.strip()
+        if content.startswith("```"):
+            content = content.split("\n", 1)[1]
+            content = content.rsplit("```", 1)[0].strip()
+
+        try:
+            return json.loads(content)
+        except json.JSONDecodeError as error:
+            start = content.find("{")
+            end = content.rfind("}")
+            if start == -1 or end == -1 or end <= start:
+                raise ValueError("Reflection response does not contain JSON") from error
+            try:
+                return json.loads(content[start:end + 1])
+            except json.JSONDecodeError as nested_error:
+                raise ValueError("Reflection response is not valid JSON") from nested_error

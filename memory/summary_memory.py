@@ -1,21 +1,18 @@
-from openai import OpenAI
 import tiktoken
 import json
 
 from config import MAX_TOKEN, SYSTEM_PROMPT
-
-encoding = tiktoken.get_encoding("cl100k_base")
-
-
+from llm import LLMClient
 
 def count_tokens(messages):
+    encoding = tiktoken.get_encoding("cl100k_base")
     text = json.dumps(
         messages,
         ensure_ascii=False
     )
     return len(encoding.encode(text))
 
-def trim_messages_by_tokens(client,messages):
+def trim_messages_by_tokens(llm: LLMClient, messages):
     print(count_tokens(messages))
 
     while count_tokens(messages) > MAX_TOKEN:
@@ -28,7 +25,7 @@ def trim_messages_by_tokens(client,messages):
             )
         ]
 
-        summary = summarize(client,messages_for_summary)
+        summary = summarize(llm, messages_for_summary)
         recent_messages = messages[-6:]
         messages = [
                        {
@@ -42,10 +39,9 @@ def trim_messages_by_tokens(client,messages):
                    ] + recent_messages
     return messages
 
-def summarize(client, messages):
-    response = client.chat.completions.create(
-        model="qwen-turbo",
-        messages=messages + [
+def summarize(llm: LLMClient, messages):
+    response = llm.chat(
+        messages + [
             {
                 "role": "user",
                 "name": "memory",

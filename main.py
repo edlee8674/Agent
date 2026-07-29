@@ -1,6 +1,6 @@
-from memory.application import MemoryApplication
+from bootstrap import create_memory_application
 
-memory_app = MemoryApplication()
+memory_app = create_memory_application()
 
 try:
     user_input = input("User: ")

@@ -11,6 +11,7 @@
 | Layer | Responsibility | Current modules |
 | --- | --- | --- |
 | Application | 编排用例与生命周期 | `memory/application.py`, `runtime/application.py`, `main.py` |
+| Composition Root | 创建基础设施与组装依赖 | `bootstrap.py` |
 | Domain | 表达 Memory 业务规则与结果模型 | `models.py`, `action.py`, `operation.py`, `extractor.py`, `validator.py`, `merger.py`, `reflection.py`, `scheduler.py` |
 | Repository | 封装数据读写接口 | `vector_store.py`, `state_store.py`, `embedding_cache.py` |
 | Infrastructure | 提供具体技术能力 | OpenAI-compatible API, ChromaDB, SQLite |
@@ -25,6 +26,15 @@ Application 只协调已有组件，不直接操作 Chroma 或 SQLite；Domain �
 main.py
   │
   ▼
+bootstrap.create_memory_application
+  ├── EmbeddingCache
+  ├── LLMClient
+  ├── MemoryRepository
+  ├── RuntimeStateStore
+  ├── RuntimeScheduler
+  └── RuntimeApplication
+          │
+          ▼
 MemoryApplication
   ├── LLMClient
   ├── MemoryExtractor
@@ -46,7 +56,7 @@ LLMClient ───────────────────────�
 
 ### `MemoryApplication`
 
-`MemoryApplication` 是 Memory 用例的入口。初始化时组装 LLM、Repository、Memory 服务与 Runtime Application。
+`MemoryApplication` 是 Memory 用例的入口。它接收 Bootstrap 创建的依赖，不负责创建 OpenAI、Chroma 或 SQLite 客户端。
 
 职责：
 
@@ -187,12 +197,15 @@ RuntimeApplication refreshes and persists RuntimeState
 ## Dependency Rules
 
 ```text
-Application → Domain / Repository
+Bootstrap    → Infrastructure / Repository / Application
+Application  → Domain / Repository
 Domain      → Domain abstractions and injected dependencies
 Repository  → Infrastructure libraries
 Infrastructure → OpenAI SDK / ChromaDB / SQLite
 ```
 
-`main.py` 是程序入口：创建 `MemoryApplication`，处理一次用户输入，并在 `finally` 中关闭 Runtime State Store。
+`bootstrap.py` 是 Composition Root：它创建具体依赖并将它们注入 Application 与 Domain 组件。
+
+`main.py` 是程序入口：调用 Bootstrap 创建 `MemoryApplication`，处理一次用户输入，并在 `finally` 中关闭 Runtime State Store。
 
 `memory/manager.py` 不再承担工作流编排；当前仅导出 `MemoryApplication`，兼容旧模块路径。

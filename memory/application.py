@@ -1,29 +1,20 @@
 from dataclasses import replace
 
-from llm import LLMClient
 from memory.action import MemoryAction
-from memory.extractor import MemoryExtractor
-from memory.merger import MemoryMerger
 from memory.models import Memory
-from memory.reflection import MemoryReflection
-from memory.retriever import MemoryRetriever, format_vector_memory
-from memory.validator import MemoryValidator
-from memory.vector_store import MemoryRepository
-from memory.writer import MemoryWriter
-from runtime.application import RuntimeApplication
+from memory.retriever import format_vector_memory
 
 
 class MemoryApplication:
-    def __init__(self, llm=None, repository=None, runtime=None):
-        self.llm = llm or LLMClient()
-        self.repository = repository or MemoryRepository()
-        self.writer = MemoryWriter(self.llm, self.repository)
-        self.retriever = MemoryRetriever(self.llm, self.repository)
-        self.extractor = MemoryExtractor(self.llm)
-        self.validator = MemoryValidator(self.llm)
-        self.merger = MemoryMerger(self.llm)
-        self.reflection = MemoryReflection(self.llm)
-        self.runtime = runtime or RuntimeApplication()
+    def __init__(self, llm, retriever, validator, merger, reflection, writer, runtime, extractor):
+        self.llm = llm
+        self.retriever = retriever
+        self.validator = validator
+        self.merger = merger
+        self.reflection = reflection
+        self.writer = writer
+        self.runtime = runtime
+        self.extractor = extractor
 
     def extract_memory(self, user_input, assistant_content):
         return self.extractor.extract_memory(user_input, assistant_content)

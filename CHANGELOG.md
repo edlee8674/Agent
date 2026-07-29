@@ -4,6 +4,27 @@
 
 ---
 
+
+## v1.1.0 — 2026-07-21
+
+### Dependency Injection + Application Bootstrap
+
+#### Added
+
+- `Bootstrap`： 统一创建外部依赖并注入业务组件
+
+#### Refactored
+
+- `MemoryExtractor`、`MemoryRetriever`、`MemoryWriter`、`MemoryValidator`、`MemoryMerger`、`MemoryReflection` 改为接收依赖实例的 class。
+- 业务组件不再自行创建 OpenAI client 或 Chroma client， 而是接收 Bootstrap 创建好的依赖。
+
+#### Fixed
+
+- 单元素 tuple 导致 LLMClient 调用失败
+
+---
+
+
 ## v1.1.0 — 2026-07-21
 
 ### Application Layer Refactoring
