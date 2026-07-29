@@ -1,22 +1,20 @@
 # Architecture
 
-本文档描述当前 Memory Engine 的分层结构与运行流程。
-
-项目以 Application Layer 负责流程编排，业务规则、数据访问与外部技术实现分别位于独立层中。
+本项目是一个学习型 AI Agent Memory Engine。当前架构使用分层设计、依赖注入与 Bootstrap 组合根，将流程编排、业务规则、Repository 接口和基础设施实现分开。
 
 ---
 
-## Layered Architecture
+## Layers
 
 | Layer | Responsibility | Current modules |
 | --- | --- | --- |
-| Application | 编排用例与生命周期 | `memory/application.py`, `runtime/application.py`, `main.py` |
-| Composition Root | 创建基础设施与组装依赖 | `bootstrap.py` |
-| Domain | 表达 Memory 业务规则与结果模型 | `models.py`, `action.py`, `operation.py`, `extractor.py`, `validator.py`, `merger.py`, `reflection.py`, `scheduler.py` |
-| Repository | 定义领域数据访问接口 | `memory/repository.py` |
-| Infrastructure | 实现具体存储与外部服务 | `infrastructure/chroma_repository.py`, `infrastructure/embedding_service.py`, SQLite |
-
-Application 只协调已有组件，不直接操作 Chroma 或 SQLite；Domain 组件通过构造函数接收 LLM 或 Repository 依赖，不自行创建外部客户端。
+| Entry | 接收一次用户输入并管理应用生命周期 | `main.py` |
+| Composition Root | 创建具体依赖并完成注入 | `bootstrap.py` |
+| Application | 编排 Memory、Runtime、Context 用例 | `memory/application.py`, `runtime/application.py` |
+| Context | 组织上下文模型并构建 LLM messages | `context/models.py`, `context/builder.py`, `context/prompt_builder.py` |
+| Domain | Memory 实体、规则与操作结果 | `memory/models.py`, `action.py`, `operation.py`, `extractor.py`, `validator.py`, `merger.py`, `reflection.py`, `scheduler.py` |
+| Repository | 定义 Memory 数据访问接口 | `memory/repository.py` |
+| Infrastructure | Chroma、Embedding、SQLite、LLM API 的具体实现 | `infrastructure/`, `llm.py`, `memory/embedding_cache.py`, `runtime/state_store.py` |
 
 ---
 
@@ -27,140 +25,60 @@ main.py
   │
   ▼
 bootstrap.create_memory_application
-  ├── EmbeddingCache
-  ├── LLMClient
-  ├── EmbeddingService
-  ├── ChromaMemoryRepository
-  ├── RuntimeStateStore
+  ├── LLMClient ───────────────────────────────► Chat API
+  ├── EmbeddingCache ──────────────────────────► SQLite
+  ├── EmbeddingService ────────────────────────► Embedding API / Cache
+  ├── ChromaMemoryRepository ──────────────────► ChromaDB
+  ├── RuntimeStateStore ───────────────────────► SQLite
   ├── RuntimeScheduler
-  └── RuntimeApplication
-          │
-          ▼
-MemoryApplication
-  ├── LLMClient
-  ├── MemoryExtractor
-  ├── MemoryRetriever ──────► MemoryRepository ──────► ChromaMemoryRepository
-  ├── MemoryValidator ──────► LLMClient ─────────────► Chat / Embedding API
-  ├── MemoryMerger ─────────► LLMClient
-  ├── MemoryReflection ─────► LLMClient
-  ├── MemoryWriter ─────────► MemoryRepository
-  └── RuntimeApplication
-        ├── RuntimeScheduler
-        └── RuntimeStateStore ───────────────────────► SQLite
-
-ChromaMemoryRepository ──► EmbeddingService ──► Embedding API / EmbeddingCache
-ChromaMemoryRepository ──► ChromaDB
+  └── MemoryApplication
+        ├── ContextBuilder
+        │     ├── MemoryRetriever
+        │     ├── ShortMemory
+        │     └── SummaryMemory
+        ├── PromptBuilder
+        ├── MemoryExtractor / Validator / Merger / Reflection
+        ├── MemoryWriter
+        └── RuntimeApplication
 ```
 
 ---
 
-## Application Layer
-
-### `MemoryApplication`
-
-`MemoryApplication` 是 Memory 用例的入口。它接收 Bootstrap 创建的依赖，不负责创建 OpenAI、Chroma 或 SQLite 客户端。
-
-职责：
-
-- 构建向量记忆上下文
-- 提取并保存新 Memory
-- 编排 Validator、Merger 与 Writer
-- 根据 Runtime Scheduler 触发 Reflection
-- 关闭 Runtime Store
-
-关键方法：
-
-```python
-build_context(user_input)
-extract_memory(user_input, assistant_content)
-save_memory(memory)
-run_reflection()
-close()
-```
-
-### `RuntimeApplication`
-
-`RuntimeApplication` 管理运行状态，而不依赖 Memory 模块。
-
-职责：
-
-- 加载与保存 `RuntimeState`
-- 更新当前 Memory 数量
-- 委托 `RuntimeScheduler` 判断是否需要 Reflection
-- 在 Reflection 完成后更新反思基线、时间与次数
-
----
-
-## Domain Layer
-
-| Component | Responsibility |
-| --- | --- |
-| `Memory` | 记忆实体与 metadata 转换、TTL 判断 |
-| `MemoryAction` | ADD、UPDATE、DELETE、IGNORE、MERGE 操作枚举 |
-| `MemoryExtractor` | 从对话中提取结构化 `Memory` |
-| `MemoryValidator` | 判断新 Memory 的写入动作与目标旧 Memory |
-| `MemoryMerger` | 将两条 Memory 合成为一条更新后的 Memory |
-| `MemoryReflection` | 为整个 Collection 生成 `ReflectionResult` |
-| `MemoryOperation` / `ReflectionResult` | 表达 Reflection 的写入操作 |
-| `RuntimeScheduler` | 按时间与新增 Memory 数量判断是否反思 |
-
-`MemoryExtractor`、`MemoryValidator`、`MemoryMerger` 与 `MemoryReflection` 接收 `LLMClient`，但不拥有 OpenAI client 的创建逻辑。
-
----
-
-## Repository and Infrastructure
-
-### `MemoryRepository`
-
-`MemoryRepository` 是领域数据访问接口，面向 `Memory` 和查询文本，不包含 Chroma 或 Embedding 实现：
-
-```python
-add_memory(memory)
-query_memory(text)
-update_memory(memory_id, memory)
-delete_memory(...)
-count_memories()
-get_all_memories()
-```
-
-### `ChromaMemoryRepository`
-
-`ChromaMemoryRepository` 是 `MemoryRepository` 的基础设施实现。它接收 `EmbeddingService`，在保存或查询时生成 embedding，并将 `Memory` 转换为 Chroma 所需的 `id`、`document`、`metadata` 与向量。
-
-### `RuntimeStateStore`
-
-使用 SQLite 保存唯一的 Runtime State：
-
-- `memory_count`
-- `last_reflection_time`
-- `memory_count_after_reflection`
-- `reflection_count`
-
-### `LLMClient` and `EmbeddingService`
-
-`LLMClient` 负责 Chat Completion。`EmbeddingService` 负责 Embedding API，并通过 `EmbeddingCache` 缓存结果。
-
----
-
-## Workflows
-
-### 1. 回答前构建上下文
+## Main Request Flow
 
 ```text
-User Input
+User input
   ↓
 MemoryApplication.build_context
   ↓
-MemoryRetriever.search_memory
+ContextBuilder
+  ├── MemoryRetriever.search_memory
+  ├── ShortMemory.get
+  └── SummaryMemory.get
   ↓
-MemoryRepository.query_memory(text)
+Context
   ↓
-ChromaMemoryRepository → EmbeddingService → ChromaDB
+MemoryApplication.build_prompt
   ↓
-Memory[] → System Context
+PromptBuilder
+  ↓
+messages (system + user)
+  ↓
+LLMClient.chat
+  ↓
+Assistant response
 ```
 
-### 2. 保存新记忆
+`Context` 是 ContextBuilder 与 PromptBuilder 之间的数据模型，当前包含：
+
+- `user_input`
+- `memories`
+- `short_memory`
+- `summary_memory`
+
+---
+
+## Memory Persistence Flow
 
 ```text
 Conversation
@@ -175,20 +93,22 @@ MemoryValidator
   ├── ADD / UPDATE / IGNORE ──► MemoryWriter
   └── MERGE ──► MemoryMerger ──► MemoryWriter (UPDATE)
   ↓
-MemoryRepository.add_memory / update_memory
+MemoryRepository
   ↓
-ChromaMemoryRepository → EmbeddingService → ChromaDB
+ChromaMemoryRepository
+  ↓
+EmbeddingService + ChromaDB
   ↓
 RuntimeApplication.refresh_memory_count
-  ↓
-RuntimeScheduler.should_reflect
 ```
 
-### 3. Reflection
+---
+
+## Reflection Flow
 
 ```text
-RuntimeScheduler returns True
-  ↓
+RuntimeScheduler.should_reflect
+  ↓ true
 MemoryApplication.run_reflection
   ↓
 MemoryRetriever.get_all_memory
@@ -199,8 +119,38 @@ ReflectionResult
   ↓
 MemoryWriter.apply
   ↓
-RuntimeApplication refreshes and persists RuntimeState
+RuntimeApplication updates and persists RuntimeState
 ```
+
+---
+
+## Repository and Infrastructure
+
+### `MemoryRepository`
+
+`MemoryRepository` 是面向 `Memory` 领域对象的抽象接口：
+
+```python
+add_memory(memory)
+query_memory(text)
+update_memory(memory_id, memory)
+delete_memory(memory_id)
+count_memories()
+get_all_memories()
+```
+
+### `ChromaMemoryRepository`
+
+Chroma 实现接收 `EmbeddingService`。上层只传入 `Memory` 或文本；Repository 内部生成 embedding，并转换为 Chroma 所需的 documents、metadatas 与 vectors。
+
+### Runtime State
+
+`RuntimeStateStore` 将以下运行状态写入 SQLite：
+
+- 当前 Memory 数量
+- 上次 Reflection 时间
+- Reflection 后的 Memory 数量
+- Reflection 次数
 
 ---
 
@@ -208,13 +158,9 @@ RuntimeApplication refreshes and persists RuntimeState
 
 ```text
 Bootstrap      → Infrastructure / Application
-Application    → Domain / Repository interface
-Domain         → Domain models and injected dependencies
+Application    → Domain / Context / Repository interface
+Context        → Domain models and injected services
 Infrastructure → Repository interface / OpenAI SDK / ChromaDB / SQLite
 ```
 
-`bootstrap.py` 是 Composition Root：它创建具体依赖并将它们注入 Application 与 Domain 组件。
-
-`main.py` 是程序入口：调用 Bootstrap 创建 `MemoryApplication`，处理一次用户输入，并在 `finally` 中关闭 Runtime State Store。
-
-`memory/manager.py` 不再承担工作流编排；当前仅导出 `MemoryApplication`，兼容旧模块路径。
+业务组件不直接创建 OpenAI、Chroma 或 SQLite 客户端；具体对象由 `bootstrap.py` 创建后注入。

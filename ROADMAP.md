@@ -1,11 +1,10 @@
 # AI Agent Learning Roadmap
 
-> Goal:
-> Build a production-style AI Agent from scratch using Python.
+> Goal: Build a production-style AI Agent from scratch using Python.
 
 ---
 
-# Phase 1 - LLM Basics ✅
+## Phase 1 — LLM Basics ✅
 
 - [x] OpenAI SDK
 - [x] Chat Completion
@@ -18,94 +17,62 @@
 
 ---
 
-# Phase 2 - Conversation Memory ✅
+## Phase 2 — Conversation Memory 🚧
 
-## Short Memory
+### Short Memory
 
-- [x] Conversation History
-- [x] Token Counter
-- [x] Context Window
-- [x] Message Trimming
+- [x] Conversation History model
+- [x] ShortMemory storage
+- [x] Context Window concept
+- [x] Message trimming design
 
----
+### Summary Memory
 
-## Summary Memory
+- [x] Conversation summarization
+- [x] Token counting
+- [x] Summary prompt
+- [x] SummaryMemory model
 
-- [x] Conversation Summarization
-- [x] Token Compression
-- [x] Summary Prompt
-- [x] Summary Update
-
----
-
-## Vector Memory
+### Vector Memory
 
 - [x] Embedding
-- [x] Cosine Similarity
-- [x] Vector Search
+- [x] Cosine similarity concept
+- [x] Vector search
 - [x] ChromaDB
+- [x] SQLite Embedding Cache
 
----
+### Memory Pipeline
 
-## Memory Extractor
-
-- [x] Extract Facts
-- [x] Importance
-- [x] Category
-- [x] TTL
-- [x] Structured Memory
-
----
-
-## Memory Writer
-
-- [x] Save Memory
-- [x] Memory Update
-- [x] Deduplication
-- [x] Embedding Cache
-
----
-
-## Memory Retriever
-
-- [x] Vector Search
-- [x] Memory Formatting
-- [x] Memory Model
-- [x] Metadata Parsing
-
----
-
-## Current Progress 🚧
-
-Memory Module Refactoring
-
-Current Architecture
-
-Memory
-    ↓
-Extractor
-    ↓
-Retriever
-    ↓
-Writer
-    ↓
-Reflection
-    ↓
-Vector Store
-
-Remaining
-
+- [x] Memory Extractor
+- [x] Structured Memory / TTL / importance / category
+- [x] Memory Writer
+- [x] Memory Retriever
 - [x] Memory Validator
+- [x] Memory Merger
+- [x] Memory Reflection
+- [x] Runtime Scheduler and State Persistence
+
+### Context and Architecture
+
+- [x] Context Model
+- [x] ContextBuilder
+- [x] PromptBuilder
+- [x] Application Layer
+- [x] Dependency Injection and Bootstrap
+- [x] Repository Pattern
+- [x] Infrastructure Layer
+
+### Remaining
+
 - [ ] Memory Cleaner
 - [ ] Memory Ranking
 - [ ] TTL Cleaner
-- [x] Memory Compression
 - [ ] Session Memory
-- [ ] Prompt Builder
+- [ ] Prompt Builder refinement
 
 ---
 
-# Phase 3 - Agent
+## Phase 3 — Agent
 
 - [ ] Tool Router
 - [ ] ReAct
@@ -116,7 +83,7 @@ Remaining
 
 ---
 
-# Phase 4 - RAG
+## Phase 4 — RAG
 
 - [ ] Document Loader
 - [ ] Chunking
@@ -127,7 +94,7 @@ Remaining
 
 ---
 
-# Phase 5 - Multi Agent
+## Phase 5 — Multi Agent
 
 - [ ] Planner
 - [ ] Executor
@@ -136,7 +103,7 @@ Remaining
 
 ---
 
-# Phase 6 - LangGraph
+## Phase 6 — LangGraph
 
 - [ ] StateGraph
 - [ ] Memory Node
@@ -145,15 +112,9 @@ Remaining
 
 ---
 
-# Phase 7 - MCP
+## Phase 7 — MCP
 
 - [ ] MCP Client
 - [ ] MCP Server
 - [ ] Tool Discovery
 - [ ] Remote Tool Calling
-
----
-
-# Long-term Goal
-
-Build a production-ready AI Agent framework.

@@ -757,3 +757,124 @@ after_reflection
 - 验证全项目 Python 编译。
 - 验证 Bootstrap 创建的 `MemoryApplication.llm` 是 `LLMClient`，而不是 tuple。
 
+# Sprint 06
+
+Date
+
+2026-07-30
+
+Theme
+
+Context Model, ContextBuilder and PromptBuilder
+
+---
+
+## Background
+
+此前 MemoryApplication 直接把向量记忆拼接成 system message。
+
+随着 Short Memory、Summary Memory 与其他上下文来源出现，
+Application 不应继续负责上下文的数据结构和 Prompt 文本格式。
+
+因此引入 Context Model、ContextBuilder 与 PromptBuilder。
+
+---
+
+## Decisions
+
+上下文构建拆分为两个阶段：
+
+```text
+ContextBuilder
+    ↓
+Context
+    ↓
+PromptBuilder
+    ↓
+LLM messages
+```
+
+`ContextBuilder` 只负责收集数据：
+
+- 用户输入
+- 向量检索结果
+- Short Memory
+- Summary Memory
+
+`PromptBuilder` 只负责将 `Context` 格式化为 system / user messages。
+
+MemoryApplication 接收两个 Builder，并提供：
+
+```python
+build_context(user_input)
+build_prompt(context)
+```
+
+这样 `main.py` 只调用 Application 方法，不直接访问 Builder 的内部对象。
+
+---
+
+## Problems
+
+### Bootstrap 与 Application 构造参数不同步
+
+Bootstrap 已经注入：
+
+```python
+context_builder=context_builder
+prompt_builder=prompt_builder
+```
+
+但 MemoryApplication 构造函数尚未声明这两个参数，导致：
+
+```text
+TypeError: MemoryApplication.__init__() got an unexpected keyword argument 'context_builder'
+```
+
+修复方式是让 Application 显式接收、保存并通过方法暴露这两个依赖。
+
+---
+
+### 不将方法当作 Builder 对象访问
+
+初始入口代码写为：
+
+```python
+memory_app.build_context.build(user_input)
+```
+
+`build_context` 是 Application 方法，不是 ContextBuilder 实例。
+
+改为：
+
+```python
+context = memory_app.build_context(user_input)
+messages = memory_app.build_prompt(context)
+```
+
+---
+
+### Short Memory 的消息格式
+
+ShortMemory 保存的是 message dict，而不是字符串列表。
+
+PromptBuilder 不能直接：
+
+```python
+"\n".join(context.short_memory)
+```
+
+需要将每条消息格式化为：
+
+```text
+role: content
+```
+
+---
+
+## Verification
+
+- 使用 Fake ContextBuilder 与 PromptBuilder 验证 Application 的上下文与 Prompt 编排。
+- 验证短期消息字典可以正确进入 Prompt。
+- 验证 Bootstrap 能创建 ContextBuilder 与 PromptBuilder。
+
