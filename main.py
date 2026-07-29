@@ -4,14 +4,9 @@ memory_app = create_memory_application()
 
 try:
     user_input = input("User: ")
-    context = memory_app.build_context(user_input)
-    messages = context + [
-        {
-            "role": "user",
-            "content": user_input,
-        }
-    ]
 
+    context = memory_app.build_context(user_input)
+    messages = memory_app.build_prompt(context)
     response = memory_app.llm.chat(messages)
     assistant_content = response.choices[0].message.content
     memories = memory_app.extract_memory(user_input, assistant_content)

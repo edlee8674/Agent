@@ -204,9 +204,24 @@ Status
 
 ---
 
+## Lesson 13
+
+Prompt Builder
+
+Topics
+
+- Context Model
+- ContextBuilder Design
+- PromptBuilder Design
+
+Status
+
+✅ Completed
+
+---
+
 ## Upcoming
 
-- Prompt Builder
 - TTL Cleaner
 - Memory Cleaner
 - Memory Ranking

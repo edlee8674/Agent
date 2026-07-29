@@ -1,3 +1,5 @@
+from context.builder import ContextBuilder
+from context.prompt_builder import PromptBuilder
 from infrastructure.chroma_repository import ChromaMemoryRepository
 from infrastructure.embedding_service import EmbeddingService
 from llm import LLMClient
@@ -5,6 +7,8 @@ from llm import LLMClient
 from memory.application import MemoryApplication
 from memory.embedding_cache import EmbeddingCache
 from memory.extractor import MemoryExtractor
+from memory.short_memory import ShortMemory
+from memory.summary_memory import SummaryMemory
 from memory.validator import MemoryValidator
 from memory.reflection import MemoryReflection
 from memory.merger import MemoryMerger
@@ -26,6 +30,12 @@ def create_memory_application():
     runtime = RuntimeApplication(runtime_store, runtime_scheduler)
     repository = ChromaMemoryRepository(embedding_service)
     retriever = MemoryRetriever(repository)
+    context_builder = ContextBuilder(
+        retriever,
+        ShortMemory(),
+        SummaryMemory(),
+    )
+    prompt_builder = PromptBuilder()
     writer = MemoryWriter(repository)
     validator = MemoryValidator(llm)
     merger = MemoryMerger(llm)
@@ -33,6 +43,8 @@ def create_memory_application():
     extractor = MemoryExtractor(llm)
 
     return MemoryApplication(
+        context_builder = context_builder,
+        prompt_builder = prompt_builder,
         llm=llm,
         retriever=retriever,
         validator=validator,
