@@ -1,16 +1,13 @@
-from llm import LLMClient
 from memory.models import Memory
-from memory.vector_store import MemoryRepository
+from memory.repository import MemoryRepository
 
 
 class MemoryRetriever:
-    def __init__(self, llm: LLMClient, repository: MemoryRepository):
-        self.llm = llm
+    def __init__(self, repository: MemoryRepository):
         self.repository = repository
 
     def search_memory(self, text):
-        embedding = self.llm.create_embedding(text)
-        return self.to_memory_list(self.repository.query_memory(embedding))
+        return self.to_memory_list(self.repository.query_memory(text))
 
     def get_all_memory(self):
         return self.to_memory_list(self.repository.get_all_memories())

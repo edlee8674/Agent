@@ -672,6 +672,48 @@ encoding = tiktoken.get_encoding("cl100k_base")
 
 ---
 
+### Repository 接口与 Chroma 实现分离
+
+原来的 `vector_store.py` 名为 Repository，但直接创建 Chroma client、生成 embedding 并调用 Collection。
+
+这次拆分为：
+
+```text
+memory/repository.py
+    MemoryRepository（领域数据访问接口）
+
+infrastructure/chroma_repository.py
+    ChromaMemoryRepository（Chroma 实现）
+
+infrastructure/embedding_service.py
+    EmbeddingService（Embedding 与缓存）
+```
+
+接口接收领域对象：
+
+```python
+repository.add_memory(memory)
+repository.update_memory(memory_id, memory)
+repository.query_memory(text)
+```
+
+具体的 `ChromaMemoryRepository` 再调用 `EmbeddingService`，将 `Memory` 转换为 Chroma 字段。
+
+Bootstrap 必须创建并注入 `EmbeddingService`：
+
+```python
+embedding_service = EmbeddingService(llm.client, embedding_cache)
+repository = ChromaMemoryRepository(embedding_service)
+```
+
+遗漏这个构造参数会导致：
+
+```text
+TypeError: ChromaMemoryRepository.__init__() missing 1 required positional argument: 'embedding_service'
+```
+
+---
+
 ### Runtime Layer 不反向依赖 Memory Layer
 
 `RuntimeApplication` 最初直接导入 Retriever 来统计 Memory 数量。

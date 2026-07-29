@@ -1,32 +1,18 @@
-from llm import LLMClient
 from memory.action import MemoryAction
 from memory.operation import ReflectionResult
+from memory.repository import MemoryRepository
 from memory.validator import ValidatorResult
-from memory.vector_store import MemoryRepository
 
 
 class MemoryWriter:
-    def __init__(self, llm: LLMClient, repository: MemoryRepository):
-        self.llm = llm
+    def __init__(self, repository: MemoryRepository):
         self.repository = repository
 
     def _add(self, memory):
-        embedding = self.llm.create_embedding(memory.fact)
-        self.repository.add_memory(
-            memory.id,
-            memory.fact,
-            embedding,
-            memory.to_metadata(),
-        )
+        self.repository.add_memory(memory)
 
     def _update(self, memory_id, memory):
-        embedding = self.llm.create_embedding(memory.fact)
-        self.repository.update_memory(
-            memory_id,
-            memory.fact,
-            embedding,
-            memory.to_metadata(),
-        )
+        self.repository.update_memory(memory_id, memory)
 
     def write(self, result: ValidatorResult):
         memory = result.new_memory

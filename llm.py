@@ -14,18 +14,3 @@ class LLMClient:
             model=CHAT_MODEL,
             messages=messages,
         )
-
-    def create_embedding(self, text: str) -> list[float]:
-        embedding = self.embedding_cache.get(text)
-        if embedding is not None:
-            print("Embedding Cache Hit")
-            return embedding
-
-        print("Embedding API")
-        response = self.client.embeddings.create(
-            model=EMBEDDING_MODEL,
-            input=text,
-        )
-        embedding = response.data[0].embedding
-        self.embedding_cache.save(text, embedding)
-        return embedding

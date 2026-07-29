@@ -13,8 +13,8 @@
 | Application | 编排用例与生命周期 | `memory/application.py`, `runtime/application.py`, `main.py` |
 | Composition Root | 创建基础设施与组装依赖 | `bootstrap.py` |
 | Domain | 表达 Memory 业务规则与结果模型 | `models.py`, `action.py`, `operation.py`, `extractor.py`, `validator.py`, `merger.py`, `reflection.py`, `scheduler.py` |
-| Repository | 封装数据读写接口 | `vector_store.py`, `state_store.py`, `embedding_cache.py` |
-| Infrastructure | 提供具体技术能力 | OpenAI-compatible API, ChromaDB, SQLite |
+| Repository | 定义领域数据访问接口 | `memory/repository.py` |
+| Infrastructure | 实现具体存储与外部服务 | `infrastructure/chroma_repository.py`, `infrastructure/embedding_service.py`, SQLite |
 
 Application 只协调已有组件，不直接操作 Chroma 或 SQLite；Domain 组件通过构造函数接收 LLM 或 Repository 依赖，不自行创建外部客户端。
 
@@ -29,7 +29,8 @@ main.py
 bootstrap.create_memory_application
   ├── EmbeddingCache
   ├── LLMClient
-  ├── MemoryRepository
+  ├── EmbeddingService
+  ├── ChromaMemoryRepository
   ├── RuntimeStateStore
   ├── RuntimeScheduler
   └── RuntimeApplication
@@ -38,7 +39,7 @@ bootstrap.create_memory_application
 MemoryApplication
   ├── LLMClient
   ├── MemoryExtractor
-  ├── MemoryRetriever ──────► MemoryRepository ──────► ChromaDB
+  ├── MemoryRetriever ──────► MemoryRepository ──────► ChromaMemoryRepository
   ├── MemoryValidator ──────► LLMClient ─────────────► Chat / Embedding API
   ├── MemoryMerger ─────────► LLMClient
   ├── MemoryReflection ─────► LLMClient
@@ -47,7 +48,8 @@ MemoryApplication
         ├── RuntimeScheduler
         └── RuntimeStateStore ───────────────────────► SQLite
 
-LLMClient ──────────────────────────────────────────► EmbeddingCache (SQLite)
+ChromaMemoryRepository ──► EmbeddingService ──► Embedding API / EmbeddingCache
+ChromaMemoryRepository ──► ChromaDB
 ```
 
 ---
@@ -110,16 +112,20 @@ close()
 
 ### `MemoryRepository`
 
-封装 Chroma Collection 的低层操作：
+`MemoryRepository` 是领域数据访问接口，面向 `Memory` 和查询文本，不包含 Chroma 或 Embedding 实现：
 
 ```python
-add_memory(...)
-query_memory(...)
-update_memory(...)
+add_memory(memory)
+query_memory(text)
+update_memory(memory_id, memory)
 delete_memory(...)
 count_memories()
 get_all_memories()
 ```
+
+### `ChromaMemoryRepository`
+
+`ChromaMemoryRepository` 是 `MemoryRepository` 的基础设施实现。它接收 `EmbeddingService`，在保存或查询时生成 embedding，并将 `Memory` 转换为 Chroma 所需的 `id`、`document`、`metadata` 与向量。
 
 ### `RuntimeStateStore`
 
@@ -130,9 +136,9 @@ get_all_memories()
 - `memory_count_after_reflection`
 - `reflection_count`
 
-### `LLMClient`
+### `LLMClient` and `EmbeddingService`
 
-封装 Chat Completion 与 Embedding API，并通过 `EmbeddingCache` 缓存 Embedding 结果。
+`LLMClient` 负责 Chat Completion。`EmbeddingService` 负责 Embedding API，并通过 `EmbeddingCache` 缓存结果。
 
 ---
 
@@ -147,9 +153,9 @@ MemoryApplication.build_context
   ↓
 MemoryRetriever.search_memory
   ↓
-LLMClient.create_embedding
+MemoryRepository.query_memory(text)
   ↓
-MemoryRepository.query_memory
+ChromaMemoryRepository → EmbeddingService → ChromaDB
   ↓
 Memory[] → System Context
 ```
@@ -168,6 +174,10 @@ MemoryRetriever.search_memory
 MemoryValidator
   ├── ADD / UPDATE / IGNORE ──► MemoryWriter
   └── MERGE ──► MemoryMerger ──► MemoryWriter (UPDATE)
+  ↓
+MemoryRepository.add_memory / update_memory
+  ↓
+ChromaMemoryRepository → EmbeddingService → ChromaDB
   ↓
 RuntimeApplication.refresh_memory_count
   ↓
@@ -197,11 +207,10 @@ RuntimeApplication refreshes and persists RuntimeState
 ## Dependency Rules
 
 ```text
-Bootstrap    → Infrastructure / Repository / Application
-Application  → Domain / Repository
-Domain      → Domain abstractions and injected dependencies
-Repository  → Infrastructure libraries
-Infrastructure → OpenAI SDK / ChromaDB / SQLite
+Bootstrap      → Infrastructure / Application
+Application    → Domain / Repository interface
+Domain         → Domain models and injected dependencies
+Infrastructure → Repository interface / OpenAI SDK / ChromaDB / SQLite
 ```
 
 `bootstrap.py` 是 Composition Root：它创建具体依赖并将它们注入 Application 与 Domain 组件。
