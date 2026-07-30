@@ -9,7 +9,12 @@ class ChromaMemoryRepository(MemoryRepository):
     def __init__(self, embedding_service: EmbeddingService, path="./chromadb", collection_name="memory"):
         self.embedding_service = embedding_service
         self.client = chromadb.PersistentClient(path=path)
-        self.collection = self.client.get_or_create_collection(name=collection_name)
+        self.collection = self.client.get_or_create_collection(
+            name=collection_name,
+            metadata={
+                "hnsw:space": "cosine"
+            }
+        )
 
     def add_memory(self, memory):
         embedding = self.embedding_service.create_embedding(memory.fact)

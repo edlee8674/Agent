@@ -16,7 +16,7 @@ class MemoryApplication:
         runtime,
         extractor,
         context_builder,
-        prompt_builder,
+        prompt_builder
     ):
         self.llm = llm
         self.retriever = retriever
