@@ -16,7 +16,9 @@ class MemoryApplication:
         runtime,
         extractor,
         context_builder,
-        prompt_builder
+        prompt_builder,
+        token_compressor,
+        final_token_validator
     ):
         self.llm = llm
         self.retriever = retriever
@@ -28,12 +30,25 @@ class MemoryApplication:
         self.extractor = extractor
         self.context_builder = context_builder
         self.prompt_builder = prompt_builder
+        self.token_compressor = token_compressor
+        self.final_token_validator = final_token_validator
 
     def build_context(self, user_input):
         return self.context_builder.build(user_input)
 
     def build_prompt(self, context):
         return self.prompt_builder.build(context)
+
+    def prepare_messages(self, context):
+        """构建满足最终 Token 限制的 Prompt。"""
+        messages = self.build_prompt(context)
+        while not self.final_token_validator.validate(messages):
+            compressed_context = self.token_compressor.compress(context)
+            if compressed_context == context:
+                raise ValueError("上下文超过 Token 限制，且没有可压缩的长期记忆。")
+            context = compressed_context
+            messages = self.build_prompt(context)
+        return messages
 
     def extract_memory(self, user_input, assistant_content):
         return self.extractor.extract_memory(user_input, assistant_content)

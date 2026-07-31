@@ -1,4 +1,8 @@
+from multiprocessing.util import Finalize
+
 from context.builder import ContextBuilder
+from context.compressor import ContextCompressor
+from context.final_token_validator import FinalTokenValidator
 from context.prompt_builder import PromptBuilder
 from context.token_budget import TokenBudgetManager, TokenBudgetConfig
 from infrastructure.chroma_repository import ChromaMemoryRepository
@@ -39,6 +43,8 @@ def create_memory_application():
     token_counter = TiktokenTokenCounter()
     token_config = TokenBudgetConfig(context_window=8000,reserved_output_tokens=1500,safety_margin=300)
     token_budget_manager = TokenBudgetManager(token_counter,token_config)
+    final_token_validator = FinalTokenValidator(token_counter,max_tokens=10000)
+    token_compressor = ContextCompressor(token_counter)
     context_builder = ContextBuilder(
         retriever,
         ShortMemory(),
@@ -54,6 +60,8 @@ def create_memory_application():
     extractor = MemoryExtractor(llm)
 
     return MemoryApplication(
+        token_compressor = token_compressor,
+        final_token_validator = final_token_validator,
         context_builder = context_builder,
         prompt_builder = prompt_builder,
         llm=llm,
