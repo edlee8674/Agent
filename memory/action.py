@@ -11,3 +11,5 @@ class MemoryAction(Enum):
     IGNORE = "ignore"
 
     MERGE = "merge"
+
+    ARCHIVE = "archive"

@@ -34,7 +34,9 @@ class MemoryReflection:
         删除无价值或过期记忆。
         4.MERGE
         将多个重复记忆合并。
-
+        5.ARCHIVE
+        归档记忆。
+        
         memories : {memories}
 
         只返回一个合法 JSON 对象，不要 Markdown 代码围栏、解释文字或省略号。
@@ -52,13 +54,18 @@ class MemoryReflection:
               "reason": "已经过期"
             }},
             {{
+              "action": "ARCHIVE",
+              "target_ids": ["456"],
+              "reason": "长期未使用，保留但不再参与检索"
+            }},
+            {{
               "action": "UPDATE",
               "target_ids": ["123"],
               "memory": {{
                 "fact": "用户计划在北海道旅行",
                 "category": "future_plan",
                 "importance": 0.9,
-                "ttl": null
+                "expires_at": null
               }},
               "reason": "补充了已有计划"
             }}

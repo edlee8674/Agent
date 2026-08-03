@@ -2,6 +2,7 @@ from dataclasses import replace
 
 from memory.action import MemoryAction
 from memory.models import Memory
+from memory.status import MemoryStatus
 
 
 class MemoryApplication:
@@ -18,7 +19,8 @@ class MemoryApplication:
         context_builder,
         prompt_builder,
         token_compressor,
-        final_token_validator
+        final_token_validator,
+        lifecycle
     ):
         self.llm = llm
         self.retriever = retriever
@@ -32,8 +34,10 @@ class MemoryApplication:
         self.prompt_builder = prompt_builder
         self.token_compressor = token_compressor
         self.final_token_validator = final_token_validator
+        self.lifecycle = lifecycle
 
     def build_context(self, user_input):
+        self.run_lifecycle()
         return self.context_builder.build(user_input)
 
     def build_prompt(self, context):
@@ -74,6 +78,15 @@ class MemoryApplication:
         self.reflect_memories(memories)
         self.runtime.refresh_memory_count(self.retriever.count_memories())
         self.runtime.after_reflection()
+
+    def run_lifecycle(self):
+        memories = self.retriever.get_all_memory()
+        for memory in memories:
+            if (
+                memory.status == MemoryStatus.ACTIVE
+                and self.lifecycle.should_archive(memory)
+            ):
+                self.writer.archive(memory.id)
 
     def reflect_memories(self, memories: list[Memory]):
         result = self.reflection.reflect(memories)

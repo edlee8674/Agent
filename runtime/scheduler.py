@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 
 from config import REFLECT_INTERVAL_HOURS, REFLECT_MEMORY_THRESHOLD
+from memory.lifecycle_service import MemoryLifecycleService
 from runtime.state import RuntimeState
 
 

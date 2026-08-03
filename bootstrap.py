@@ -13,6 +13,7 @@ from llm import LLMClient
 from memory.application import MemoryApplication
 from memory.embedding_cache import EmbeddingCache
 from memory.extractor import MemoryExtractor
+from memory.lifecycle import MemoryLifecycleManager
 from memory.ranker import MemoryRanker
 from memory.scoring import MemoryScorer
 from memory.short_memory import ShortMemory
@@ -37,8 +38,9 @@ def create_memory_application():
     runtime_scheduler = RuntimeScheduler()
     runtime = RuntimeApplication(runtime_store, runtime_scheduler)
     repository = ChromaMemoryRepository(embedding_service)
-    retriever = MemoryRetriever(repository)
-    scorer = MemoryScorer()
+    lifecycle = MemoryLifecycleManager()
+    retriever = MemoryRetriever(repository,lifecycle)
+    scorer = MemoryScorer(lifecycle)
     ranker = MemoryRanker(scorer, top_k=5)
     token_counter = TiktokenTokenCounter()
     token_config = TokenBudgetConfig(context_window=8000,reserved_output_tokens=1500,safety_margin=300)
@@ -60,6 +62,7 @@ def create_memory_application():
     extractor = MemoryExtractor(llm)
 
     return MemoryApplication(
+        lifecycle = lifecycle,
         token_compressor = token_compressor,
         final_token_validator = final_token_validator,
         context_builder = context_builder,

@@ -15,7 +15,7 @@ class MemoryMerger:
   "fact": "",
   "category": "",
   "importance": 0.0,
-  "ttl": null
+  "expires_at": null
 }}
 
 旧记忆：{old_memory}
@@ -23,11 +23,6 @@ class MemoryMerger:
 """
         response = self.llm.chat([{"role": "user", "content": prompt}])
         data = json.loads(response.choices[0].message.content)
-        return Memory(
-            id=old_memory.id,
-            fact=data["fact"],
-            category=data["category"],
-            importance=data["importance"],
-            ttl=data["ttl"],
-            created_time=old_memory.created_time,
-        )
+        data["id"] = old_memory.id
+        data["created_time"] = old_memory.created_time
+        return Memory.from_dict(data)

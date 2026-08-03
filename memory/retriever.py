@@ -1,16 +1,33 @@
+from memory.lifecycle import MemoryLifecycleManager
 from memory.models import Memory
 from memory.repository import MemoryRepository
+from memory.status import MemoryStatus
 
 
 class MemoryRetriever:
-    def __init__(self, repository: MemoryRepository):
+    def __init__(self, repository: MemoryRepository , lifecycle:MemoryLifecycleManager):
         self.repository = repository
+        self.lifecycle = lifecycle
 
-    def search_memory(self, text):
-        return self.to_memory_list(self.repository.query_memory(text))
+    def search_memory(self, text, include_archived=False):
+        memories = self.to_memory_list(
+            self.repository.query_memory(text, include_archived=include_archived)
+        )
+        valid_memories = [
+            m
+            for m in memories
+            if (include_archived or m.status == MemoryStatus.ACTIVE)
+            and not self.lifecycle.is_expired(m)
+        ]
+        return valid_memories
 
-    def get_all_memory(self):
-        return self.to_memory_list(self.repository.get_all_memories())
+    def get_all_memory(self, include_archived=False):
+        memories = self.to_memory_list(
+            self.repository.get_all_memories(include_archived=include_archived)
+        )
+        if include_archived:
+            return memories
+        return [memory for memory in memories if memory.status == MemoryStatus.ACTIVE]
 
     def count_memories(self):
         return self.repository.count_memories()
@@ -21,7 +38,6 @@ class MemoryRetriever:
         documents = collection["documents"]
         metadatas = collection["metadatas"]
         distances = collection.get("distances")
-
         if ids and isinstance(ids[0], list):
             ids = ids[0]
             documents = documents[0]

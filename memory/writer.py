@@ -23,6 +23,9 @@ class MemoryWriter:
                 raise ValueError("UPDATE action requires old_memory")
             self._update(result.old_memory.id, memory)
 
+    def archive(self, memory_id):
+        self.repository.archive_memory(memory_id)
+
     def apply(self, result: ReflectionResult):
         for operation in result.operations:
             if operation.action == MemoryAction.ADD:
@@ -42,3 +45,8 @@ class MemoryWriter:
                 self._update(operation.target_ids[0], operation.memory)
                 for memory_id in operation.target_ids[1:]:
                     self.repository.delete_memory(memory_id)
+            elif operation.action == MemoryAction.ARCHIVE:
+                if not operation.target_ids:
+                    raise ValueError("Reflection ARCHIVE requires target_ids")
+                for memory_id in operation.target_ids:
+                    self.archive(memory_id)

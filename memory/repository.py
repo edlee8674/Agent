@@ -9,7 +9,12 @@ class MemoryRepository(ABC):
         pass
 
     @abstractmethod
-    def query_memory(self, text: str, top_k: int = 3):
+    def query_memory(
+        self,
+        text: str,
+        include_archived: bool = False,
+        top_k: int = 3,
+    ):
         pass
 
     @abstractmethod
@@ -25,5 +30,9 @@ class MemoryRepository(ABC):
         pass
 
     @abstractmethod
-    def get_all_memories(self):
+    def get_all_memories(self, include_archived: bool = False):
+        pass
+
+    @abstractmethod
+    def archive_memory(self, memory_id: str) -> None:
         pass

@@ -2,6 +2,7 @@ import json
 
 from llm import LLMClient
 from memory.models import Memory
+from memory.status import MemoryStatus
 
 
 class MemoryExtractor:
@@ -44,7 +45,7 @@ class MemoryExtractor:
         "fact":"",
         "category":"preference",
         "importance":0.8,
-        "ttl":null
+        "ttl_days": null
     }}
 ]
 }}
@@ -56,8 +57,8 @@ category
 决定生命周期。
 importance
 重要程度。
-ttl
-过期时间。ttl 请根据当前日期开始计算。
+ttl_days
+生效天数。ttl_days 根据fact提炼。
 
 用户输入：
 
@@ -73,7 +74,7 @@ AI回答：
                 fact=item["fact"],
                 category=item["category"],
                 importance=item["importance"],
-                ttl=item["ttl"],
+                ttl_days=item.get("ttl_days")
             )
             for item in data["memories"]
         ]
