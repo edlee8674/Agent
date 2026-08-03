@@ -20,7 +20,8 @@ class MemoryApplication:
         prompt_builder,
         token_compressor,
         final_token_validator,
-        lifecycle
+        lifecycle,
+        lifecycle_service
     ):
         self.llm = llm
         self.retriever = retriever
@@ -35,9 +36,12 @@ class MemoryApplication:
         self.token_compressor = token_compressor
         self.final_token_validator = final_token_validator
         self.lifecycle = lifecycle
+        self.lifecycle_service = lifecycle_service
 
     def build_context(self, user_input):
-        self.run_lifecycle()
+        if self.runtime.should_run_lifecycle():
+            self.lifecycle_service.process()
+            self.runtime.after_lifecycle()
         return self.context_builder.build(user_input)
 
     def build_prompt(self, context):
@@ -78,15 +82,6 @@ class MemoryApplication:
         self.reflect_memories(memories)
         self.runtime.refresh_memory_count(self.retriever.count_memories())
         self.runtime.after_reflection()
-
-    def run_lifecycle(self):
-        memories = self.retriever.get_all_memory()
-        for memory in memories:
-            if (
-                memory.status == MemoryStatus.ACTIVE
-                and self.lifecycle.should_archive(memory)
-            ):
-                self.writer.archive(memory.id)
 
     def reflect_memories(self, memories: list[Memory]):
         result = self.reflection.reflect(memories)

@@ -44,29 +44,33 @@
 ### Memory Pipeline
 
 - [x] Memory Extractor
-- [x] Structured Memory / TTL / importance / category
-- [x] Memory Writer
-- [x] Memory Retriever
-- [x] Memory Validator
-- [x] Memory Merger
+- [x] Structured Memory / importance / category
+- [x] Memory Writer and Retriever
+- [x] Memory Validator and Merger
 - [x] Memory Reflection
 - [x] Runtime Scheduler and State Persistence
 
 ### Context and Architecture
 
-- [x] Context Model
-- [x] ContextBuilder
-- [x] PromptBuilder
+- [x] Context Model / ContextBuilder / PromptBuilder
+- [x] Token Budget and Context Compression
+- [x] Memory Ranking and Score
 - [x] Application Layer
 - [x] Dependency Injection and Bootstrap
 - [x] Repository Pattern
 - [x] Infrastructure Layer
 
+### Memory Lifecycle 🚧
+
+- [x] `expires_at` domain model and TTL days conversion
+- [x] Expiration detection and decay calculation
+- [x] ACTIVE / ARCHIVED status model
+- [x] Archive persistence and Chroma status filtering
+- [x] Lifecycle time gate and persisted runtime state
+- [ ] Memory Cleaner / physical deletion policy
+
 ### Remaining
 
-- [ ] Memory Cleaner
-- [ ] Memory Ranking
-- [ ] TTL Cleaner
 - [ ] Session Memory
 - [ ] Prompt Builder refinement
 

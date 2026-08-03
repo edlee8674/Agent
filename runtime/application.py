@@ -23,5 +23,12 @@ class RuntimeApplication:
         self.state.reflection_count += 1
         self.store.save(self.state)
 
+    def should_run_lifecycle(self):
+        return self.scheduler.should_run_lifecycle(self.state)
+
+    def after_lifecycle(self):
+        self.state.last_lifecycle_run_time = datetime.now()
+        self.store.save(self.state)
+
     def close(self):
         self.store.close()

@@ -14,6 +14,7 @@ from memory.application import MemoryApplication
 from memory.embedding_cache import EmbeddingCache
 from memory.extractor import MemoryExtractor
 from memory.lifecycle import MemoryLifecycleManager
+from memory.lifecycle_service import MemoryLifecycleService
 from memory.ranker import MemoryRanker
 from memory.scoring import MemoryScorer
 from memory.short_memory import ShortMemory
@@ -60,8 +61,10 @@ def create_memory_application():
     merger = MemoryMerger(llm)
     reflection = MemoryReflection(llm)
     extractor = MemoryExtractor(llm)
+    lifecycle_service = MemoryLifecycleService(retriever, lifecycle, writer)
 
     return MemoryApplication(
+        lifecycle_service= lifecycle_service,
         lifecycle = lifecycle,
         token_compressor = token_compressor,
         final_token_validator = final_token_validator,

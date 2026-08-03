@@ -878,3 +878,180 @@ role: content
 - 验证短期消息字典可以正确进入 Prompt。
 - 验证 Bootstrap 能创建 ContextBuilder 与 PromptBuilder。
 
+---
+
+# Sprint 07
+
+Date
+
+2026-07-31
+
+Theme
+
+Memory Ranking and Simple Context Compression
+
+---
+
+## Background
+
+长期记忆开始同时受到相关性、重要性和时效性影响。仅将检索结果直接放入 Prompt，既没有优先级，也无法保证最终消息落在模型输入预算内。
+
+---
+
+## Decisions
+
+上下文流程调整为：
+
+```text
+Retriever
+  ↓
+MemoryRanker
+  ↓
+TokenBudgetManager
+  ↓
+Context
+  ↓
+PromptBuilder
+  ↓
+FinalTokenValidator
+  ↓ over limit
+ContextCompressor
+```
+
+`MemoryScorer` 组合相似度、重要性和时效性；`MemoryRanker` 只保留靠前记忆。TokenBudgetManager 在构建 Context 时预分配输入预算；最终 Prompt 仍超限时，ContextCompressor 每轮移除排序最低的一条长期记忆。
+
+---
+
+## Problems
+
+### 不同 Validator 的职责不能混用
+
+最初入口把 `MemoryValidator` 当成 Token 校验函数调用：
+
+```python
+memory_app.validator(messages)
+```
+
+但 `MemoryValidator` 的输入是“新 Memory 与已有 Memory”，而 Token 校验的输入是 Prompt messages。两者虽然都叫 Validator，却属于不同用例。
+
+最终将 Token 校验与压缩收敛到 Application：
+
+```python
+messages = memory_app.prepare_messages(context)
+```
+
+Application 在内部负责构建 Prompt、校验 Token、压缩 Context 后重新构建 Prompt。
+
+### Context 与 messages 不是同一对象
+
+ContextCompressor 接收 `Context`，而 PromptBuilder 的输出是 `list[dict]` messages。把 messages 当作包含 `context` 字段的对象会造成类型错误。
+
+这次明确了边界：压缩发生在 Context 层，Prompt 只负责格式转换。
+
+---
+
+## Reflection
+
+同名组件不代表相同职责；确认方法的输入类型和返回类型，比根据名字猜测调用方式更可靠。
+
+---
+
+# Sprint 08
+
+Date
+
+2026-08-03
+
+Theme
+
+Memory Lifecycle and Archive
+
+---
+
+## Background
+
+Memory 不能只写入和检索。随着时间推移，未来计划会到期，长期未使用的记忆也应退出普通检索范围。此次先实现 Archive：保留数据，但不再参与默认 Context 检索。
+
+---
+
+## Decisions
+
+### 区分领域类型与存储类型
+
+领域层的 `Memory` 使用：
+
+```python
+expires_at: date | None
+status: MemoryStatus
+```
+
+而 Chroma metadata 与 JSON 使用基础值：
+
+```python
+"expires_at": "2026-08-03"
+"status": "active"
+```
+
+读取时再转换回 `date` 和 `MemoryStatus`。`ttl_days` 仅用于创建时计算 `expires_at`，不作为最终持久化字段。
+
+### Archive 是状态迁移
+
+Archive 的输入是目标记忆 ID，而不是一整条由 LLM 重建的 Memory：
+
+```text
+MemoryAction.ARCHIVE
+  ↓
+MemoryWriter.archive(memory_id)
+  ↓
+MemoryRepository.archive_memory(memory_id)
+  ↓
+status = archived
+```
+
+默认 Repository 查询加入 Chroma `where={"status": "active"}`，归档记忆不再进入普通 Retriever、Context 与 Ranking。
+
+### 请求触发，时间门控
+
+最初在每次 `build_context()` 时直接扫描全部记忆。这样保证即时性，但会把维护任务放进每一次用户请求。
+
+现在改为：
+
+```text
+build_context
+  ↓
+RuntimeScheduler.should_run_lifecycle
+  ↓ true
+MemoryLifecycleService.process
+  ↓
+RuntimeApplication.after_lifecycle
+```
+
+`last_lifecycle_run_time` 保存在 SQLite，因此请求入口只是检查是否到达间隔；真正的全量扫描只在到期时发生。
+
+---
+
+## Problems
+
+### `self` 指向方法所属对象
+
+`MemoryLifecycleManager.is_expired()` 最初在 Manager 上读取：
+
+```python
+self.expires_at
+```
+
+但 `expires_at` 属于传入的 `Memory`，不属于 Lifecycle Manager。`self` 永远是方法所属类的实例；字段属于参数对象时，应由参数对象读取或委托给其方法。
+
+### Schema 演进需要兼容旧数据
+
+状态字段加入前写入的 Chroma metadata 没有 `status`。领域模型读取时默认 ACTIVE；实际启用 Chroma `where` 前，旧 Collection 需要完成一次性 status 数据迁移，否则缺失该字段的记录不会命中 `where` 条件。
+
+---
+
+## Verification
+
+- 使用 Fake Repository 验证默认查询只返回 ACTIVE 且未过期的 Memory。
+- 验证 ARCHIVE 操作可按多个 target IDs 调用 Repository。
+- 验证生命周期时间门控后才触发归档扫描。
+- 验证 status 和日期在领域模型、Chroma metadata、JSON 之间正确转换。
+

@@ -1,16 +1,18 @@
 # AI Agent Memory Learning Project
 
-一个从零实现 AI Agent Memory 的 Python 学习项目。当前重点是将长期记忆、上下文构建、Reflection 与运行状态组织为可替换的分层架构。
+一个从零实现 AI Agent Memory 的 Python 学习项目。当前重点是长期记忆的检索、写入、上下文预算、生命周期归档与分层架构。
 
 ## Current Capabilities
 
-- Chat Completion 与 Structured Memory Extraction
-- Vector Memory：Embedding、Chroma 检索、SQLite Embedding Cache
-- Memory Validator：ADD / UPDATE / MERGE / IGNORE
-- Memory Reflection：ADD / UPDATE / DELETE / MERGE
-- Runtime Scheduler 与 SQLite Runtime State
-- Context Model、ContextBuilder、PromptBuilder
-- Dependency Injection、Bootstrap、Repository Pattern
+- Chat Completion 与 Structured Memory Extraction。
+- Vector Memory：Embedding、Chroma 检索、SQLite Embedding Cache。
+- Memory Validator：ADD / UPDATE / MERGE / IGNORE。
+- Memory Reflection：ADD / UPDATE / DELETE / MERGE / ARCHIVE。
+- Memory Ranking：相似度、重要性与时效性评分。
+- Context Model、Token Budget、PromptBuilder 与简易 Context Compression。
+- Memory Lifecycle：`expires_at`、时间衰减、ACTIVE / ARCHIVED 状态与 Chroma 状态过滤。
+- Runtime State：SQLite 持久化、Reflection 与 Lifecycle 的时间门控。
+- Dependency Injection、Bootstrap、Repository Pattern 与 Infrastructure Layer。
 
 ## Architecture
 
@@ -20,13 +22,15 @@ main.py
 bootstrap.py
   ↓
 MemoryApplication
-  ├── ContextBuilder → Context → PromptBuilder
-  ├── Memory Extract / Validate / Merge / Write / Reflect
+  ├── Lifecycle gate → MemoryLifecycleService → Archive
+  ├── ContextBuilder → Ranker → TokenBudget → Context
+  ├── PromptBuilder → FinalTokenValidator → ContextCompressor
+  ├── Extract → Validate → Merge → Write → Reflect
   ├── MemoryRepository → ChromaMemoryRepository
   └── RuntimeApplication → RuntimeStateStore
 ```
 
-详见 [ARCHITECTURE.md](ARCHITECTURE.md)。
+完整说明见 [ARCHITECTURE.md](ARCHITECTURE.md)。
 
 ## Quick Start
 
@@ -38,7 +42,7 @@ MemoryApplication
 pip install -r requirements.txt
 ```
 
-3. 根据 `.env.example` 创建 `.env`，设置：
+3. 根据 `.env.example` 创建 `.env`：
 
 ```text
 API_KEY=...
@@ -58,12 +62,16 @@ python main.py
 ```text
 bootstrap.py              # Composition Root
 main.py                   # 程序入口
-context/                  # Context model、ContextBuilder、PromptBuilder
-memory/                   # Memory application、domain model、repository interface
-infrastructure/           # Chroma repository、Embedding service
+context/                  # Context、Token budget、Prompt、Compression
+memory/                   # Memory domain、application、pipeline、lifecycle、repository
+infrastructure/           # Chroma repository、Embedding service、Token counter
 runtime/                  # Scheduler、Runtime state、SQLite state store
 ```
 
-## Learning Progress
+## Lifecycle Notes
 
-当前处于 Phase 2 的 Memory Module Refactoring：已完成 Context / Prompt pipeline 与 Repository + Infrastructure 拆分。下一步详见 [ROADMAP.md](ROADMAP.md)。
+Memory 在领域层保存 `expires_at: date | None` 与 `status: MemoryStatus`。Chroma metadata 使用 ISO 日期字符串和 `"active"` / `"archived"`。
+
+Lifecycle 当前不是常驻后台任务：每次构建 Context 时只进行时间门控判断；到达 `LIFECYCLE_INTERVAL_HOURS` 后才实际扫描并归档符合条件的 ACTIVE 记忆。
+
+学习进度见 [ROADMAP.md](ROADMAP.md)，版本变化见 [CHANGELOG.md](CHANGELOG.md)，设计过程见 [DEVLOG.md](DEVLOG.md)。

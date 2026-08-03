@@ -13,3 +13,5 @@ class RuntimeState:
     memory_count_after_reflection: int = 0
 
     reflection_count: int = 0
+
+    last_lifecycle_run_time: Optional[datetime] = None

@@ -2,231 +2,97 @@
 
 ---
 
-## Lesson 1
-
-Prompt Engineering
-
-Topics
+## Lesson 1 — Prompt Engineering ✅
 
 - System Prompt
 - User Prompt
 - Assistant Prompt
 
-Status
-
-✅ Completed
-
----
-
-## Lesson 2
-
-JSON Mode
-
-Topics
+## Lesson 2 — JSON Mode ✅
 
 - Structured Output
 - JSON Parsing
 
-Status
-
-✅ Completed
-
----
-
-## Lesson 3
-
-Function Calling
-
-Topics
+## Lesson 3 — Function Calling ✅
 
 - Tool Schema
 - Tool Execution
 
-Status
-
-✅ Completed
-
----
-
-## Lesson 4
-
-Conversation Memory
-
-Topics
+## Lesson 4 — Conversation Memory ✅
 
 - Context Window
 - Token Counting
 
-Status
-
-✅ Completed
-
----
-
-## Lesson 5
-
-Summary Memory
-
-Topics
+## Lesson 5 — Summary Memory ✅
 
 - Automatic Summary
 - Compression
 
-Status
-
-✅ Completed
-
----
-
-## Lesson 6
-
-Vector Memory
-
-Topics
+## Lesson 6 — Vector Memory ✅
 
 - Embedding
 - Similarity Search
 - ChromaDB
 
-Status
-
-✅ Completed
-
----
-
-## Lesson 7
-
-Memory Extractor
-
-Topics
+## Lesson 7 — Memory Extractor ✅
 
 - Fact Extraction
 - Importance
 - Category
-- TTL
+- TTL days / `expires_at`
 
-Status
+## Lesson 8 — Memory Writer and Retriever ✅
 
-✅ Completed
+- Save / Update / Deduplication
+- Vector retrieval
+- Domain dataclass conversion
 
----
-
-## Lesson 8
-
-Memory Writer
-
-Topics
-
-- Save
-- Update
-- Deduplication
-
-Status
-
-✅ Completed
-
----
-
-## Lesson 9
-
-Memory Retriever
-
-Topics
-
-- Search
-- Formatting
-- Dataclass
-
-Status
-
-✅ Completed
-
----
-
-## Lesson 10
-
-Embedding Cache
-
-Topics
+## Lesson 9 — Embedding Cache ✅
 
 - SQLite
-- Cache
-- Persistent Embedding
+- Persistent embedding cache
 
-Status
+## Lesson 10 — Memory Validation and Reflection ✅
 
-✅ Completed
+- Validator / Merger
+- MemoryAction
+- Reflection operations
+- Runtime scheduling
 
----
+## Lesson 11 — Architecture Refactoring ✅
 
-## Lesson 11
-
-Project Refactoring
-
-Topics
-
-- Clean Architecture
-- Layer Separation
+- Application Layer
+- Dependency Injection
 - Repository Pattern
+- Infrastructure Layer
 
-Status
-
-✅ Completed
-
----
-
-## Lesson 12
-
-Memory Validator
-
-Topics
-
-- Validate Memory
-- Conflict Detection
-- Better Prompt
-
-Status
-
-✅ Completed
-
-## Lesson 13
-
-Memory Validator
-
-Topics
-
-- Memory Reflection
-- Memory scheduler
-
-Status
-
-✅ Completed
-
----
-
-## Lesson 13
-
-Prompt Builder
-
-Topics
+## Lesson 12 — Context Pipeline ✅
 
 - Context Model
-- ContextBuilder Design
-- PromptBuilder Design
+- ContextBuilder
+- PromptBuilder
+- Token Budget
 
-Status
+## Lesson 13 — Memory Ranking and Context Compression ✅
 
-✅ Completed
+- Memory Score / Ranker
+- Final Token validation
+- Simple Context Compression
 
----
+## Lesson 14 — Memory Lifecycle ✅
+
+- `expires_at` and expiration detection
+- Importance decay
+- ACTIVE / ARCHIVED states
+- Archive persistence and Lifecycle scheduler gate
 
 ## Upcoming
 
-- TTL Cleaner
-- Memory Cleaner
-- Memory Ranking
+- Memory Cleaner / physical deletion policy
+- Session Memory
+- Prompt Builder refinement
 - Hybrid Retrieval
-- Tool Calling
+- Tool Calling Agent
 - ReAct
 - Planner
 - LangGraph

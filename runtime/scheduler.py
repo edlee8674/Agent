@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta
 
-from config import REFLECT_INTERVAL_HOURS, REFLECT_MEMORY_THRESHOLD
-from memory.lifecycle_service import MemoryLifecycleService
+from config import REFLECT_INTERVAL_HOURS, REFLECT_MEMORY_THRESHOLD, LIFECYCLE_INTERVAL_HOURS
 from runtime.state import RuntimeState
 
 
@@ -14,3 +13,10 @@ class RuntimeScheduler:
         enough_memory = state.memory_count- state.memory_count_after_reflection>= REFLECT_MEMORY_THRESHOLD
 
         return enough_time or enough_memory
+
+    def should_run_lifecycle(self, state: RuntimeState):
+        if state.last_lifecycle_run_time is None:
+            return True
+        enough_time =  datetime.now() - state.last_lifecycle_run_time >= timedelta(hours=LIFECYCLE_INTERVAL_HOURS)
+
+        return enough_time
