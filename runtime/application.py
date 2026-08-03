@@ -30,5 +30,12 @@ class RuntimeApplication:
         self.state.last_lifecycle_run_time = datetime.now()
         self.store.save(self.state)
 
+    def should_run_consolidation(self):
+        return self.scheduler.should_run_consolidation(self.state)
+
+    def after_consolidation(self):
+        self.state.last_consolidation_time = datetime.now()
+        self.store.save(self.state)
+
     def close(self):
         self.store.close()

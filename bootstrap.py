@@ -11,6 +11,9 @@ from infrastructure.token_counter import TiktokenTokenCounter
 from llm import LLMClient
 
 from memory.application import MemoryApplication
+from memory.consolidation_policy import ConsolidationPolicy
+from memory.consolidation_service import MemoryConsolidationService
+from memory.consolidator import MemoryConsolidator
 from memory.embedding_cache import EmbeddingCache
 from memory.extractor import MemoryExtractor
 from memory.lifecycle import MemoryLifecycleManager
@@ -25,6 +28,7 @@ from memory.merger import MemoryMerger
 
 from memory.retriever import MemoryRetriever
 from memory.writer import MemoryWriter
+from prompt.consolidation_prompt import ConsolidationPromptBuilder
 
 from runtime.application import RuntimeApplication
 from runtime.scheduler import RuntimeScheduler
@@ -62,8 +66,13 @@ def create_memory_application():
     reflection = MemoryReflection(llm)
     extractor = MemoryExtractor(llm)
     lifecycle_service = MemoryLifecycleService(retriever, lifecycle, writer)
+    consolidation_prompt_builder = ConsolidationPromptBuilder()
+    consolidation_policy = ConsolidationPolicy()
+    consolidator = MemoryConsolidator(llm, consolidation_prompt_builder)
+    consolidation_service = MemoryConsolidationService(retriever, consolidation_policy, consolidator, writer)
 
     return MemoryApplication(
+        consolidation_service = consolidation_service,
         lifecycle_service= lifecycle_service,
         lifecycle = lifecycle,
         token_compressor = token_compressor,

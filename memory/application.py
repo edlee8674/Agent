@@ -21,7 +21,8 @@ class MemoryApplication:
         token_compressor,
         final_token_validator,
         lifecycle,
-        lifecycle_service
+        lifecycle_service,
+        consolidation_service
     ):
         self.llm = llm
         self.retriever = retriever
@@ -37,12 +38,18 @@ class MemoryApplication:
         self.final_token_validator = final_token_validator
         self.lifecycle = lifecycle
         self.lifecycle_service = lifecycle_service
+        self.consolidation_service = consolidation_service
 
     def build_context(self, user_input):
         if self.runtime.should_run_lifecycle():
             self.lifecycle_service.process()
             self.runtime.refresh_memory_count(self.retriever.count_memories())
             self.runtime.after_lifecycle()
+
+        if self.runtime.should_run_consolidation():
+            self.consolidation_service.process()
+            self.runtime.refresh_memory_count(self.retriever.count_memories())
+            self.runtime.after_consolidation()
         return self.context_builder.build(user_input)
 
     def build_prompt(self, context):

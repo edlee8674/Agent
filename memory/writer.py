@@ -1,6 +1,7 @@
 from datetime import date
 
 from memory.action import MemoryAction
+from memory.consolidation_result import ConsolidationResult
 from memory.operation import ReflectionResult
 from memory.repository import MemoryRepository
 from memory.validator import ValidatorResult
@@ -30,6 +31,11 @@ class MemoryWriter:
 
     def forget(self,memory_id):
         self.repository.delete_memory(memory_id)
+
+    def consolidate(self, result: ConsolidationResult):
+        self._add(result.consolidated_memory)
+        for memory_id in result.source_memory_ids:
+            self.archive(memory_id)
 
     def apply(self, result: ReflectionResult):
         for operation in result.operations:

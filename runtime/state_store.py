@@ -20,7 +20,8 @@ class RuntimeStateStore:
             last_reflection_time TEXT,
             memory_count_after_reflection INTEGER,
             reflection_count INTEGER,
-            last_lifecycle_run_time TEXT
+            last_lifecycle_run_time TEXT,
+            last_consolidation_time TEXT
         )
         """)
         columns = {
@@ -31,6 +32,10 @@ class RuntimeStateStore:
             self.conn.execute(
                 "ALTER TABLE runtime_state ADD COLUMN last_lifecycle_run_time TEXT"
             )
+        if "last_consolidation_time" not in columns:
+            self.conn.execute(
+                "ALTER TABLE runtime_state ADD COLUMN last_consolidation_time TEXT"
+            )
         self.conn.commit()
 
     def load(self) -> RuntimeState:
@@ -38,7 +43,7 @@ class RuntimeStateStore:
             """
             SELECT memory_count, last_reflection_time,
                    memory_count_after_reflection, reflection_count,
-                   last_lifecycle_run_time
+                   last_lifecycle_run_time, last_consolidation_time
             FROM runtime_state
             WHERE id = ?
             """,
@@ -64,6 +69,11 @@ class RuntimeStateStore:
                 if row[4] is not None
                 else None
             ),
+            last_consolidation_time=(
+                datetime.fromisoformat(row[5])
+                if row[5] is not None
+                else None
+            ),
         )
 
     def save(self,state : RuntimeState):
@@ -73,9 +83,9 @@ class RuntimeStateStore:
             INTO runtime_state(
                 id, memory_count, last_reflection_time,
                 memory_count_after_reflection, reflection_count,
-                last_lifecycle_run_time
+                last_lifecycle_run_time, last_consolidation_time
             )
-            VALUES (?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 RUNTIME_ID,
@@ -87,6 +97,9 @@ class RuntimeStateStore:
                 state.reflection_count,
                 state.last_lifecycle_run_time.isoformat()
                 if state.last_lifecycle_run_time
+                else None,
+                state.last_consolidation_time.isoformat()
+                if state.last_consolidation_time
                 else None,
             )
         )

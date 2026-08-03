@@ -15,3 +15,5 @@ class RuntimeState:
     reflection_count: int = 0
 
     last_lifecycle_run_time: Optional[datetime] = None
+
+    last_consolidation_time: Optional[datetime] = None
