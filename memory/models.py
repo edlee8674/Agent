@@ -3,6 +3,7 @@ from datetime import date, timedelta
 from typing import Optional
 from uuid import uuid4
 
+from memory.category import MemoryCategory
 from memory.status import MemoryStatus
 
 
@@ -10,44 +11,54 @@ from memory.status import MemoryStatus
 class Memory:
     id: str
     fact: str
-    category: str
+    category: MemoryCategory
     importance: float
     created_time: str
     expires_at: date | None = None
     distance: Optional[float] = None
     status: MemoryStatus = MemoryStatus.ACTIVE
+    archived_at: date | None = None
 
     def to_metadata(self):
         metedata = {
-            "category": self.category,
+            "category": self.category.value,
             "importance": float(self.importance),
             "created_time": self.created_time,
             "status": self.status.value,
         }
         if self.expires_at is not None:
             metedata["expires_at"] = self.expires_at.isoformat()
+        if self.archived_at is not None:
+            metedata["archived_at"] = self.archived_at.isoformat()
         return metedata
 
     @classmethod
-    def create(cls, fact: str, category: str, importance: float, ttl_days: int | None = None):
+    def create(
+        cls,
+        fact: str,
+        category: str | MemoryCategory,
+        importance: float,
+        ttl_days: int | None = None,
+    ):
         expires_at = None
         if ttl_days is not None:
             expires_at = date.today() + timedelta(days=ttl_days)
         return cls(
             id=str(uuid4()),
             fact=fact,
-            category=category,
+            category=cls._parse_category(category),
             importance=importance,
             created_time=date.today().isoformat(),
             expires_at=expires_at,
             status=MemoryStatus.ACTIVE,
+            archived_at = None,
         )
 
     @classmethod
     def from_chroma(cls, id, document, metadata, distance, status=None):
         return cls(id=id,
                    fact=document,
-                   category=metadata["category"],
+                   category=cls._parse_category(metadata["category"]),
                    importance=metadata["importance"],
                    expires_at=cls._parse_date(
                        metadata.get("expires_at", metadata.get("ttl"))
@@ -56,7 +67,8 @@ class Memory:
                    distance=distance,
                    status=cls._parse_status(
                        status if status is not None else metadata.get("status")
-                   )
+                   ),
+                   archived_at=cls._parse_date(metadata.get("archived_at")),
                    )
 
     @classmethod
@@ -64,23 +76,25 @@ class Memory:
         return cls(
             id=data.get("id", str(uuid4())),
             fact=data["fact"],
-            category=data["category"],
+            category=cls._parse_category(data["category"]),
             importance=data["importance"],
             expires_at=cls._parse_date(data.get("expires_at", data.get("ttl"))),
             created_time=data.get("created_time") or date.today().isoformat(),
             distance=data.get("distance"),
             status=cls._parse_status(data.get("status")),
+            archived_at=cls._parse_date(data.get("archived_at")),
         )
 
     def to_dict(self):
         return {
             "id": self.id,
             "fact": self.fact,
-            "category": self.category,
+            "category": self.category.value,
             "importance": self.importance,
             "expires_at": self.expires_at.isoformat() if self.expires_at else None,
             "created_time": self.created_time,
             "status": self.status.value,
+            "archived_at": self.archived_at.isoformat() if self.archived_at else None,
         }
 
     def to_prompt(self):
@@ -105,3 +119,12 @@ class Memory:
         if isinstance(value, MemoryStatus):
             return value
         return MemoryStatus(value)
+
+    @staticmethod
+    def _parse_category(value: str | MemoryCategory) -> MemoryCategory:
+        if isinstance(value, MemoryCategory):
+            return value
+        try:
+            return MemoryCategory(value)
+        except ValueError:
+            return MemoryCategory.UNKNOWN

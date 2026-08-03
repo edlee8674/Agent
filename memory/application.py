@@ -41,6 +41,7 @@ class MemoryApplication:
     def build_context(self, user_input):
         if self.runtime.should_run_lifecycle():
             self.lifecycle_service.process()
+            self.runtime.refresh_memory_count(self.retriever.count_memories())
             self.runtime.after_lifecycle()
         return self.context_builder.build(user_input)
 

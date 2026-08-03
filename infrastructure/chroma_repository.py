@@ -56,10 +56,15 @@ class ChromaMemoryRepository(MemoryRepository):
             ids=[memory_id],
         )
 
-    def archive_memory(self, memory_id):
+    def archive_memory(self, memory_id, archived_at):
         self.collection.update(
             ids=[memory_id],
-            metadatas=[{"status": MemoryStatus.ARCHIVED.value}],
+            metadatas=[
+                {
+                    "status": MemoryStatus.ARCHIVED.value,
+                    "archived_at": archived_at.isoformat(),
+                }
+            ],
         )
 
     def delete_memory(self, memory_id):

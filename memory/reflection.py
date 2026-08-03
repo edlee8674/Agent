@@ -2,6 +2,7 @@ import json
 
 from llm import LLMClient
 from memory.action import MemoryAction
+from memory.category import CATEGORY_DESCRIPTIONS, EXTRACTABLE_MEMORY_CATEGORIES
 from memory.models import Memory
 from memory.operation import MemoryOperation, ReflectionResult
 
@@ -12,6 +13,10 @@ class MemoryReflection:
 
 
     def reflect(self, memories: list[Memory]) -> ReflectionResult:
+        category_options = "\n".join(
+            f'- "{category.value}": {CATEGORY_DESCRIPTIONS[category]}'
+            for category in EXTRACTABLE_MEMORY_CATEGORIES
+        )
         prompt = f"""
         你是一名 Memory Reflection Agent。
         你的职责不是提取新的记忆。
@@ -36,6 +41,9 @@ class MemoryReflection:
         将多个重复记忆合并。
         5.ARCHIVE
         归档记忆。
+
+        新增或更新 memory 的 category 只能从以下值中选择：
+        {category_options}
         
         memories : {memories}
 

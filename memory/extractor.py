@@ -1,8 +1,8 @@
 import json
 
 from llm import LLMClient
+from memory.category import CATEGORY_DESCRIPTIONS, EXTRACTABLE_MEMORY_CATEGORIES
 from memory.models import Memory
-from memory.status import MemoryStatus
 
 
 class MemoryExtractor:
@@ -10,6 +10,10 @@ class MemoryExtractor:
         self.llm = llm
 
     def extract_memory(self, user_input, assistant_content):
+        category_options = "\n".join(
+            f'- "{category.value}": {CATEGORY_DESCRIPTIONS[category]}'
+            for category in EXTRACTABLE_MEMORY_CATEGORIES
+        )
         prompt = f"""
 你是一个 Memory Extractor。
 你的任务是从用户聊天中提取未来有价值的信息。
@@ -54,7 +58,10 @@ class MemoryExtractor:
 fact
 真正保存内容。
 category
-决定生命周期。
+只能从以下值中选择，禁止输出其他值：
+{category_options}
+
+如果无法归类，或者信息不值得保存，不要放入 memories。
 importance
 重要程度。
 ttl_days

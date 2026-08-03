@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from datetime import date
 
 from memory.models import Memory
 
@@ -34,5 +35,5 @@ class MemoryRepository(ABC):
         pass
 
     @abstractmethod
-    def archive_memory(self, memory_id: str) -> None:
+    def archive_memory(self, memory_id: str, archived_at: date) -> None:
         pass

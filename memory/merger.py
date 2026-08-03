@@ -1,6 +1,7 @@
 import json
 
 from llm import LLMClient
+from memory.category import CATEGORY_DESCRIPTIONS, EXTRACTABLE_MEMORY_CATEGORIES
 from memory.models import Memory
 
 
@@ -9,6 +10,10 @@ class MemoryMerger:
         self.llm = llm
 
     def merge_memory(self, old_memory: Memory, new_memory: Memory) -> Memory:
+        category_options = "\n".join(
+            f'- "{category.value}": {CATEGORY_DESCRIPTIONS[category]}'
+            for category in EXTRACTABLE_MEMORY_CATEGORIES
+        )
         prompt = f"""
 合并两条关于同一用户的长期记忆，输出 JSON：
 {{
@@ -17,6 +22,9 @@ class MemoryMerger:
   "importance": 0.0,
   "expires_at": null
 }}
+
+category 只能从以下值中选择：
+{category_options}
 
 旧记忆：{old_memory}
 新记忆：{new_memory}

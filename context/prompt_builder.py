@@ -33,7 +33,7 @@ class PromptBuilder:
                 事实:
                 {memory.fact}
                 类别:
-                {memory.category}
+                {memory.category.value}
                 """
             )
         return "\n".join(result)

@@ -1,3 +1,5 @@
+from datetime import date
+
 from memory.action import MemoryAction
 from memory.operation import ReflectionResult
 from memory.repository import MemoryRepository
@@ -23,8 +25,11 @@ class MemoryWriter:
                 raise ValueError("UPDATE action requires old_memory")
             self._update(result.old_memory.id, memory)
 
-    def archive(self, memory_id):
-        self.repository.archive_memory(memory_id)
+    def archive(self, memory_id, archived_at=None):
+        self.repository.archive_memory(memory_id, archived_at or date.today())
+
+    def forget(self,memory_id):
+        self.repository.delete_memory(memory_id)
 
     def apply(self, result: ReflectionResult):
         for operation in result.operations:
