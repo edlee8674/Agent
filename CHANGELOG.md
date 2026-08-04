@@ -4,6 +4,34 @@
 
 ---
 
+## v1.6.0 — 2026-08-04
+
+### Memory Forgetting and Consolidation
+
+#### Added
+
+- `archived_at`：记录记忆归档日期。
+- Forgetting 规则：归档保留期、低衰减值、可遗忘 Category 三项同时满足时物理删除记忆。
+- `MemoryCategory` 与 Extractor / Merger / Reflection 的统一类别约束。
+- `ConsolidationPromptBuilder`、`ConsolidationPolicy`、`MemoryConsolidator`、`ConsolidationResult`、`MemoryConsolidationService`。
+- Consolidation 时间门控：`last_consolidation_time`、`should_run_consolidation()`、`after_consolidation()`。
+- `MIN_CONSOLIDATION_GROUP_SIZE` 与 `CONSOLIDATION_INTERVAL_HOURS` 配置。
+
+#### Changed
+
+- Archive 同时持久化 `status="archived"` 与 `archived_at`。
+- Lifecycle 先归档符合条件的 ACTIVE 记忆，再检查包含 ARCHIVED 的集合进行 Forgetting。
+- Consolidation 先新增综合记忆，再归档来源记忆，避免新增失败时丢失来源信息。
+- Runtime SQLite State 增加 consolidation 时间列及兼容迁移。
+
+#### Fixed
+
+- 修复 Category 未受 Prompt/领域模型约束导致 Lifecycle 类别规则无法匹配的问题。
+- 修复 Consolidation Prompt 未插入候选记忆、Consolidator 缺少 JSON 解析与 `should_consolidate=false` 分支的问题。
+- 修复 RuntimeState 未持久化 consolidation 时间、重启后重复执行 Consolidation 的问题。
+
+---
+
 ## v1.5.0 — 2026-08-03
 
 ### Memory Lifecycle and Archive

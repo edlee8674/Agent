@@ -10,9 +10,9 @@
 | --- | --- | --- |
 | Entry | 接收一次用户输入、调用应用服务并关闭资源 | `main.py` |
 | Composition Root | 创建具体依赖并完成注入 | `bootstrap.py` |
-| Application | 编排上下文、记忆写入、Reflection 和 Lifecycle 用例 | `memory/application.py`, `runtime/application.py` |
+| Application | 编排上下文、记忆写入、Reflection、Lifecycle 与 Consolidation 用例 | `memory/application.py`, `runtime/application.py` |
 | Context | 构建 Context、Token 预算、Prompt 与简易压缩 | `context/` |
-| Domain | Memory 实体、状态、生命周期、排序及操作结果 | `memory/models.py`, `status.py`, `lifecycle.py`, `lifecycle_service.py`, `scoring.py`, `ranker.py`, `action.py`, `operation.py` |
+| Domain | Memory 实体、类别、状态、生命周期、排序、整合策略及操作结果 | `memory/models.py`, `category.py`, `status.py`, `lifecycle.py`, `lifecycle_service.py`, `consolidation_*.py`, `scoring.py`, `ranker.py`, `action.py`, `operation.py` |
 | Repository | 定义面向 `Memory` 的数据访问接口 | `memory/repository.py` |
 | Infrastructure | Chroma、Embedding、Token 计数、SQLite 与 LLM API | `infrastructure/`, `llm.py`, `memory/embedding_cache.py`, `runtime/state_store.py` |
 
@@ -40,6 +40,8 @@ bootstrap.create_memory_application
         ├── MemoryExtractor / Validator / Merger / Reflection
         ├── MemoryWriter
         ├── MemoryLifecycleManager / MemoryLifecycleService
+        ├── ConsolidationPolicy / MemoryConsolidator / MemoryConsolidationService
+        ├── ConsolidationPromptBuilder
         └── RuntimeApplication
 ```
 
@@ -56,6 +58,10 @@ RuntimeScheduler.should_run_lifecycle
   ├── false ────────────────────────────────────────────────┐
   └── true → MemoryLifecycleService.process → archive writes │
                  ↓ RuntimeApplication.after_lifecycle        │
+RuntimeScheduler.should_run_consolidation                      │
+  ├── false ──────────────────────────────────────────────────┤
+  └── true → MemoryConsolidationService.process                │
+                 ↓ RuntimeApplication.after_consolidation      │
   ↓                                                           │
 ContextBuilder                                                 │
   ├── MemoryRetriever.search_memory (ACTIVE only)             │
@@ -99,9 +105,11 @@ EmbeddingService + ChromaDB
 `Memory` 在领域层使用：
 
 - `expires_at: date | None`：到期日期；`ttl_days` 仅在创建时用于计算它。
+- `archived_at: date | None`：归档日期，是 Forgetting 保留期的起点。
 - `status: MemoryStatus`：当前包括 `ACTIVE` 和 `ARCHIVED`。
+- `category: MemoryCategory`：当前支持 `preference`、`temporary_preference`、`identity`、`future_plan` 和兼容历史数据的 `unknown`。
 
-写入 Chroma 时，`expires_at` 和 `status` 分别序列化为 ISO 日期字符串和 `"active"` / `"archived"`。读取时再还原为领域类型；无 `status` 的旧记录默认视为 ACTIVE。
+写入 Chroma 时，日期字段序列化为 ISO 日期字符串，枚举序列化为字符串；读取时再还原为领域类型。无 `status` 的旧记录默认视为 ACTIVE，未知历史类别会映射为 `unknown`。
 
 ---
 
@@ -118,14 +126,47 @@ MemoryLifecycleManager.should_archive
   ├── expires_at reached
   └── importance decay below threshold
   ↓
-MemoryWriter.archive(memory_id)
+MemoryWriter.archive(memory_id, archived_at)
   ↓
-MemoryRepository.archive_memory(memory_id)
+MemoryRepository.archive_memory(memory_id, archived_at)
   ↓
-Chroma metadata.status = "archived"
+Chroma metadata: status = "archived", archived_at = ISO date
 ```
 
+同一次 Lifecycle 扫描还会处理 Forgetting：已归档的记忆必须同时满足归档保留期、低衰减值和可遗忘类别，才会由 `MemoryWriter.forget()` 调用 `delete_memory()` 物理删除。
+
 Lifecycle 当前由请求入口触发调度判断，而非独立后台进程：每次构建 Context 只检查是否到达间隔；只有到期时才扫描记忆。`RuntimeStateStore` 持久化 `last_lifecycle_run_time`，因此重启后仍能继续按间隔判断。
+
+---
+
+## Consolidation Flow
+
+```text
+RuntimeScheduler.should_run_consolidation
+  ↓ true
+MemoryConsolidationService.process
+  ↓
+MemoryRetriever.get_all_memory (ACTIVE only)
+  ↓
+ConsolidationPolicy.select_groups
+  ├── ACTIVE
+  ├── not expired
+  ├── grouped by MemoryCategory
+  └── group size >= MIN_CONSOLIDATION_GROUP_SIZE
+  ↓
+MemoryConsolidator + ConsolidationPromptBuilder + LLM
+  ↓
+ConsolidationResult
+  ├── consolidated_memory
+  ├── source_memory_ids
+  └── reason
+  ↓
+MemoryWriter.consolidate
+  ├── add consolidated memory
+  └── archive source memories
+```
+
+Consolidation 只处理候选组，不直接扫描并让 LLM 修改整个 Collection。新增综合记忆成功后，来源记忆被归档；随后可由 Forgetting 在保留期结束后删除。
 
 ---
 
@@ -157,7 +198,7 @@ RuntimeApplication refreshes and persists RuntimeState
 add_memory(memory)
 query_memory(text, include_archived=False, top_k=3)
 update_memory(memory_id, memory)
-archive_memory(memory_id)
+archive_memory(memory_id, archived_at)
 delete_memory(memory_id)
 get_all_memories(include_archived=False)
 count_memories()
@@ -176,8 +217,9 @@ count_memories()
 - Reflection 后的 Memory 数量；
 - Reflection 次数；
 - 上次 Lifecycle 执行时间。
+- 上次 Consolidation 执行时间。
 
-数据库初始化时会检查并补加 `last_lifecycle_run_time` 列，以兼容已有 `runtime_state` 表。
+数据库初始化时会检查并补加 Lifecycle 与 Consolidation 时间列，以兼容已有 `runtime_state` 表。
 
 ---
 

@@ -66,8 +66,17 @@
 - [x] Expiration detection and decay calculation
 - [x] ACTIVE / ARCHIVED status model
 - [x] Archive persistence and Chroma status filtering
+- [x] Forgetting: archive retention, decay and category rules
+- [x] Physical deletion through Memory Writer / Repository
 - [x] Lifecycle time gate and persisted runtime state
-- [ ] Memory Cleaner / physical deletion policy
+
+### Memory Consolidation ✅
+
+- [x] Consolidation Prompt Builder
+- [x] Candidate grouping policy
+- [x] LLM consolidated memory generation
+- [x] Add consolidated memory and archive source memories
+- [x] Consolidation scheduler state and time gate
 
 ### Remaining
 

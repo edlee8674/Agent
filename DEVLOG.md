@@ -1055,3 +1055,148 @@ self.expires_at
 - 验证生命周期时间门控后才触发归档扫描。
 - 验证 status 和日期在领域模型、Chroma metadata、JSON 之间正确转换。
 
+---
+
+# Sprint 09
+
+Date
+
+2026-08-04
+
+Theme
+
+Memory Forgetting
+
+---
+
+## Background
+
+Archive 只让记忆退出默认检索，并不减少 Collection。为了让长期运行后的 Memory Collection 可以回收，Lifecycle 增加 Forgetting：满足安全条件的 ARCHIVED 记忆会被物理删除。
+
+---
+
+## Decisions
+
+### Forgetting 是 Archive 的第二阶段
+
+```text
+ACTIVE
+  ↓ Archive
+ARCHIVED
+  ↓ Forgetting
+DELETE
+```
+
+不新增 `FORGOTTEN` 状态。Forget 是 Lifecycle 用例语义，底层持久化动作复用已有的 `delete_memory()`。
+
+### `archived_at` 是保留期起点
+
+`created_time` 表示创建时间，不能用于判断“归档后保留多久”。因此为 Memory 增加 `archived_at`，Archive 时同时写入：
+
+```text
+status = archived
+archived_at = today
+```
+
+### 三项条件同时满足才删除
+
+`should_forget()` 要求：
+
+- Memory 已归档；
+- 已超过 `ARCHIVE_RETENTION_DAYS`；
+- 衰减值低于 Forgetting 阈值；
+- Category 属于可自动遗忘的类别。
+
+未知历史类别默认不会进入自动遗忘范围。
+
+---
+
+## Problems
+
+### Category 需要成为受约束 Schema
+
+Lifecycle 根据 Category 决定 Forgetting，但 Extractor 先前没有限制 category 输出，LLM 可能生成 `plan`、`travel_plan` 等不同字符串，导致规则无法匹配。
+
+因此引入 `MemoryCategory`，并让 Extractor、Merger、Reflection Prompt 共享同一套可选类别。领域模型读取未知历史类别时映射为 `unknown`，而不是使旧数据读取失败。
+
+### 删除后必须刷新 Runtime 计数
+
+Forget 会改变实际 Memory 数量。Lifecycle 完成后，Application 在保存 Lifecycle 时间前重新调用 `refresh_memory_count()`，避免 Reflection 的数量阈值使用旧状态。
+
+---
+
+# Sprint 10
+
+Date
+
+2026-08-04
+
+Theme
+
+Memory Consolidation
+
+---
+
+## Background
+
+Reflection 可以开放式整理整个 Collection，但不适合在每次维护时把所有记忆交给 LLM。Consolidation 专门处理一组已经通过规则筛选的相关原子记忆，将其压缩为一条更高层、可检索的长期记忆。
+
+---
+
+## Decisions
+
+### Policy、Prompt、Consolidator 分离
+
+```text
+ConsolidationPolicy
+  ↓ candidate groups
+ConsolidationPromptBuilder
+  ↓ LLM messages
+MemoryConsolidator
+  ↓ ConsolidationResult
+MemoryWriter.consolidate
+```
+
+Policy 只选择 ACTIVE、未过期、同 Category 且达到最小数量的组；Prompt Builder 只管理提示词；Consolidator 只调用 LLM 和解析 JSON。
+
+### 先新增，再归档来源
+
+```text
+add consolidated_memory
+  ↓ success
+archive source_memory_ids
+```
+
+这个顺序保证新增综合记忆失败时，来源记忆仍保持 ACTIVE，不会丢失。
+
+### Consolidation 使用独立时间门控
+
+Runtime 增加 `last_consolidation_time`，SQLite State Store 对该列执行建表与迁移。请求入口只判断是否到达 `CONSOLIDATION_INTERVAL_HOURS`；达到间隔后才调用 Consolidation Service。
+
+---
+
+## Problems
+
+### Prompt 模板变量必须使用单层大括号
+
+在 f-string 中，`{{ category_options }}` 会输出字面量，而不会插入变量。正确形式是：
+
+```python
+{category_options}
+```
+
+JSON 示例本身才需要使用 `{{` 与 `}}` 转义。
+
+### LLM 输出必须验证来源 ID
+
+Consolidator 会验证 `source_memory_ids`：至少两条、互不重复、并且都是当前候选组成员。否则 LLM 可能让 Writer 归档不属于本次整合的记忆。
+
+---
+
+## Verification
+
+- 验证候选组只包含满足 Policy 的 Memory。
+- 验证 `should_consolidate=false` 时不产生写入。
+- 验证 Writer 先新增综合记忆再归档来源记忆。
+- 验证 consolidation 时间能写入 SQLite 并在重启后恢复。
+

@@ -79,16 +79,24 @@
 - Final Token validation
 - Simple Context Compression
 
-## Lesson 14 — Memory Lifecycle ✅
+## Lesson 14 — Memory Lifecycle and Forgetting ✅
 
 - `expires_at` and expiration detection
 - Importance decay
 - ACTIVE / ARCHIVED states
-- Archive persistence and Lifecycle scheduler gate
+- `archived_at` and archive retention
+- Archive / Forgetting persistence and Lifecycle scheduler gate
+
+## Lesson 15 — Memory Consolidation ✅
+
+- ConsolidationPromptBuilder
+- Candidate grouping policy
+- ConsolidationResult
+- Add consolidated memory and archive source memories
+- Consolidation scheduler gate
 
 ## Upcoming
 
-- Memory Cleaner / physical deletion policy
 - Session Memory
 - Prompt Builder refinement
 - Hybrid Retrieval
